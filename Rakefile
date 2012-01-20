@@ -36,7 +36,7 @@ task :extract do
     `rm -rf tmp/aloha`
     `unzip -u tmp/alohaeditor.zip -d tmp`
 
-    %w(build.txt package.json).each { |file| `rm tmp/aloha/#{file}` }
+    %w(build.txt package.json plugins/extra/browser/css/browsercombined.css.backup).each { |file| `rm tmp/aloha/#{file}` }
     %w(demo test).each { |folder| `rm -rf tmp/aloha/#{folder}` }
 
     `rm -rf assets/vendor/aloha`
