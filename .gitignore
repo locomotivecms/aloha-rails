@@ -1,0 +1,8 @@
+.DS_Store
+.bundle
+/tmp
+tmp/**/*
+*.gem
+.rvmrc
+.rbenv-version
+pkg/
