@@ -20,6 +20,10 @@ Add to your application.js:
 
     //= require aloha
 
+and in your erb / haml /..etc layout
+
+    = stylesheet_link_tag 'aloha/css/aloha.css'
+
 and use AlohaEditor in your view:
 
     <script type="text/javascript">

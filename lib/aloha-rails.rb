@@ -1,2 +1,1 @@
-require "aloha/version"
-require "aloha/railtie"
+require 'aloha/rails'
