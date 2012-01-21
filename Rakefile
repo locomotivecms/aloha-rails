@@ -2,13 +2,18 @@ require 'rubygems'
 require 'rake'
 require 'rubygems/package_task'
 
+$:.push File.expand_path('../lib', __FILE__)
+require 'aloha/rails/version'
+
 gemspec = eval(File.read('locomotive-aloha-rails.gemspec'))
 Gem::PackageTask.new(gemspec) do |pkg|
   pkg.gem_spec = gemspec
 end
 
-$:.push File.expand_path('../lib', __FILE__)
-require 'aloha/rails/version'
+desc 'build the gem and release it to rubygems.org'
+task :release => :gem do
+  sh "gem push pkg/locomotive-aloha-rails-#{Aloha::Rails::VERSION}.gem"
+end
 
 def step(name)
   print "#{name} ..."
@@ -26,7 +31,7 @@ desc "Update Aloha Editor to version specified in lib/aloha/rails/version.rb"
 task :update => [ :fetch, :extract, :process ]
 
 task :fetch do
-  download("https://github.com/downloads/alohaeditor/Aloha-Editor/alohaeditor-#{Aloha::ALOHA_EDITOR_VERSION}.zip", "alohaeditor.zip")
+  download("https://github.com/downloads/alohaeditor/Aloha-Editor/alohaeditor-#{Aloha::VERSION}.zip", "alohaeditor.zip")
 end
 
 task :extract do

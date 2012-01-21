@@ -4,7 +4,7 @@ require 'aloha/rails/version'
 
 Gem::Specification.new do |s|
   s.name        = 'locomotive-aloha-rails'
-  s.version     = Aloha::VERSION
+  s.version     = Aloha::Rails::VERSION
   s.summary     = 'Rails 3.1 integration for Aloha Editor.'
   s.description = 'Seamlessly integrates Aloha Editor into the Rails 3.1 asset pipeline.'
   s.homepage    = 'https://github.com/locomotivecms/aloha-rails'
