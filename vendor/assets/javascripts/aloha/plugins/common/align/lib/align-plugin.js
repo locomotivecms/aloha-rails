@@ -8,338 +8,348 @@
 define(
 ['aloha', 'aloha/plugin', 'aloha/floatingmenu', 'i18n!align/nls/i18n', 'i18n!aloha/nls/i18n', 'aloha/jquery', 'css!align/css/align.css'],
 function(Aloha, Plugin, FloatingMenu, i18n, i18nCore, jQuery) {
-	
 
-	var
-		GENTICS = window.GENTICS;
-	
-	/**
-	 * register the plugin with unique name
-	 */
-	 return Plugin.create('align', {
-		_constructor: function(){
-			this._super('align');
-		},
 
-		/**
-		 * Configure the available languages
-		 */
-		languages: ['en', 'fr'],
-		
-		/**
-		 * Configuration (available align options)
-		 */
-		config: {
-			alignment: ['right','left','center','justify']
-		},
-		
-		/**
-		 * Alignment wanted by the user
-		 */
-		alignment: '',
+  var
+    GENTICS = window.GENTICS;
 
-		/**
-		 * Alignment of the selection before modification
-		 */
-		lastAlignment: '',
-		
-		/**
-		 * Initialize the plugin and set initialize flag on true
-		 */
-		init: function () {
-			this.createButtons();
+  /**
+   * register the plugin with unique name
+   */
+   return Plugin.create('align', {
+    _constructor: function(){
+      this._super('align');
+    },
 
-			var that = this;
+    /**
+     * Configure the available languages
+     */
+    languages: ['en', 'fr'],
 
-			// apply specific configuration if an editable has been activated
-			Aloha.bind('aloha-editable-activated', function (e, params) {
-				that.applyButtonConfig(params.editable.obj);
-			});
+    /**
+     * Configuration (available align options)
+     */
+    config: {
+      alignment: ['right','left','center','justify']
+    },
 
-			// add the event handler for selection change
-		    Aloha.bind('aloha-selection-changed', function(event, rangeObject) {
-		    	if (Aloha.activeEditable) {
-		    		that.buttonPressed(rangeObject);
-		    	}
-		    });
-		},
+    /**
+     * Alignment wanted by the user
+     */
+    alignment: '',
 
-		buttonPressed: function (rangeObject) {
+    /**
+     * Alignment of the selection before modification
+     */
+    lastAlignment: '',
 
-			var that = this;
+    /**
+     * Initialize the plugin and set initialize flag on true
+     */
+    init: function () {
+      this.createButtons();
 
-			rangeObject.findMarkup(function() {
-		        that.alignment = jQuery(this).css('text-align');
-		    }, Aloha.activeEditable.obj);
+      var that = this;
 
-			if(this.alignment != this.lastAlignment)
-			{
-				switch(this.lastAlignment)
-				{
-					case 'right':
-						this.alignRightButton.setPressed(false);
-						break;
+      // apply specific configuration if an editable has been activated
+      Aloha.bind('aloha-editable-activated', function (e, params) {
+        that.applyButtonConfig(params.editable.obj);
+      });
 
-					case 'left':
-						this.alignLeftButton.setPressed(false);
-						break;
+      // add the event handler for selection change
+        Aloha.bind('aloha-selection-changed', function(event, rangeObject) {
+          if (Aloha.activeEditable) {
+            that.buttonPressed(rangeObject);
+          }
+        });
+    },
 
-					case 'center':
-						this.alignCenterButton.setPressed(false);
-						break;
+    buttonPressed: function (rangeObject) {
 
-					case 'justify':
-						this.alignJustifyButton.setPressed(false);
-						break;
-				}
+      var that = this;
 
-				switch(this.alignment)
-				{
-					case 'right':
-						this.alignRightButton.setPressed(true);
-						break;
+      rangeObject.findMarkup(function() {
+            that.alignment = jQuery(this).css('text-align');
+        }, Aloha.activeEditable.obj);
 
-					case 'center':
-						this.alignCenterButton.setPressed(true);
-						break;
+      if(this.alignment != this.lastAlignment)
+      {
+        switch(this.lastAlignment)
+        {
+          case 'right':
+            this.alignRightButton.setPressed(false);
+            break;
 
-					case 'justify':
-						this.alignJustifyButton.setPressed(true);
-						break;
+          case 'left':
+            this.alignLeftButton.setPressed(false);
+            break;
 
-					default:
-						this.alignLeftButton.setPressed(true);
-						this.alignment  = 'left';
-						break;
-				}
-			}
+          case 'center':
+            this.alignCenterButton.setPressed(false);
+            break;
 
-			this.lastAlignment = this.alignment;
-		},
+          case 'justify':
+            this.alignJustifyButton.setPressed(false);
+            break;
+        }
 
-		/**
-		 * applys a configuration specific for an editable
-		 * buttons not available in this configuration are hidden
-		 * @param {Object} id of the activated editable
-		 * @return void
-		 */
-		applyButtonConfig: function (obj) {
-			
-			if (typeof this.settings.alignment === 'undefined') {
-				var config = this.config.alignment;
-			} else {
-				var config = this.settings.alignment;
-			}
-			
-			if ( jQuery.inArray('right', config) != -1) {
-				this.alignRightButton.show();
-			} else {
-				this.alignRightButton.hide();
-			}
+        switch(this.alignment)
+        {
+          case 'right':
+            this.alignRightButton.setPressed(true);
+            break;
 
-			if ( jQuery.inArray('left', config) != -1) {
-				this.alignLeftButton.show();
-			} else {
-				this.alignLeftButton.hide();
-			}
+          case 'center':
+            this.alignCenterButton.setPressed(true);
+            break;
 
-			if ( jQuery.inArray('center', config) != -1) {
-				this.alignCenterButton.show();
-			} else {
-				this.alignCenterButton.hide();
-			}
+          case 'justify':
+            this.alignJustifyButton.setPressed(true);
+            break;
 
-			if ( jQuery.inArray('justify', config) != -1) {
-				this.alignJustifyButton.show();
-			} else {
-				this.alignJustifyButton.hide();
-			}
-		},
+          default:
+            this.alignLeftButton.setPressed(true);
+            this.alignment  = 'left';
+            break;
+        }
+      }
 
-		createButtons: function () {
-		    var that = this;
+      this.lastAlignment = this.alignment;
+    },
 
-		    // create a new button
-		    this.alignLeftButton = new Aloha.ui.Button({
-			  'name' : 'alignLeft',
-		      'iconClass' : 'aloha-button-align aloha-button-align-left',
-		      'size' : 'small',
-		      'onclick' : function () { that.align('left'); },
-		      'tooltip' : i18n.t('button.alignleft.tooltip'),
-		      'toggle' : true
-		    });
+    /**
+     * applys a configuration specific for an editable
+     * buttons not available in this configuration are hidden
+     * @param {Object} id of the activated editable
+     * @return void
+     */
+    applyButtonConfig: function (obj) {
 
-		    // add it to the floating menu
-		    FloatingMenu.addButton(
-		      'Aloha.continuoustext',
-		      this.alignLeftButton,
-		      i18nCore.t('floatingmenu.tab.format'),
-		      1
-		    );
+      if (typeof this.settings.alignment === 'undefined') {
+        var config = this.config.alignment;
+      } else {
+        var config = this.settings.alignment;
+      }
 
-		    // create a new button
-		    this.alignCenterButton = new Aloha.ui.Button({
-		      'name' : 'alignCenter',
-		      'iconClass' : 'aloha-button-align aloha-button-align-center',
-		      'size' : 'small',
-		      'onclick' : function () { that.align('center'); },
-		      'tooltip' : i18n.t('button.aligncenter.tooltip'),
-		      'toggle' : true
-		    });
+      if ( jQuery.inArray('right', config) != -1) {
+        this.alignRightButton.show();
+      } else {
+        this.alignRightButton.hide();
+      }
 
-		    // add it to the floating menu
-		    FloatingMenu.addButton(
-		      'Aloha.continuoustext',
-		      this.alignCenterButton,
-		      i18nCore.t('floatingmenu.tab.format'),
-		      1
-		    );
+      if ( jQuery.inArray('left', config) != -1) {
+        this.alignLeftButton.show();
+      } else {
+        this.alignLeftButton.hide();
+      }
 
-		    // create a new button
-		    this.alignRightButton = new Aloha.ui.Button({
-		      'name' : 'alignRight',
-		      'iconClass' : 'aloha-button-align aloha-button-align-right',
-		      'size' : 'small',
-		      'onclick' : function () { that.align('right'); },
-		      'tooltip' : i18n.t('button.alignright.tooltip'),
-		      'toggle' : true
-		    });
+      if ( jQuery.inArray('center', config) != -1) {
+        this.alignCenterButton.show();
+      } else {
+        this.alignCenterButton.hide();
+      }
 
-		    // add it to the floating menu
-		    FloatingMenu.addButton(
-		      'Aloha.continuoustext',
-		      this.alignRightButton,
-		      i18nCore.t('floatingmenu.tab.format'),
-		      1
-		    );
+      if ( jQuery.inArray('justify', config) != -1) {
+        this.alignJustifyButton.show();
+      } else {
+        this.alignJustifyButton.hide();
+      }
+    },
 
-		    // create a new button
-		    this.alignJustifyButton = new Aloha.ui.Button({
-		      'name' : 'alignJustify',
-		      'iconClass' : 'aloha-button-align aloha-button-align-justify',
-		      'size' : 'small',
-		      'onclick' : function () { that.align('justify'); },
-		      'tooltip' : i18n.t('button.alignjustify.tooltip'),
-		      'toggle' : true
-		    });
+    createButtons: function () {
+        var that = this;
 
-		    // add it to the floating menu
-		    FloatingMenu.addButton(
-		      'Aloha.continuoustext',
-		      this.alignJustifyButton,
-		      i18nCore.t('floatingmenu.tab.format'),
-		      1
-		    );
+        // create a new button
+        this.alignLeftButton = new Aloha.ui.Button({
+        'name' : 'alignLeft',
+          'iconClass' : 'aloha-button-align aloha-button-align-left',
+          'size' : 'small',
+          'onclick' : function () { that.align('left'); },
+          'tooltip' : i18n.t('button.alignleft.tooltip'),
+          'toggle' : true
+        });
 
-		},
+        // add it to the floating menu
+        FloatingMenu.addButton(
+          'Aloha.continuoustext',
+          this.alignLeftButton,
+          i18nCore.t('floatingmenu.tab.format'),
+          1
+        );
 
-		/**
-		 * Check whether inside a align tag 
-		 * @param {GENTICS.Utils.RangeObject} range range where to insert the object (at start or end)
-		 * @return markup
-		 * @hide
-		 */
-		findAlignMarkup: function ( range ) {
+        // create a new button
+        this.alignCenterButton = new Aloha.ui.Button({
+          'name' : 'alignCenter',
+          'iconClass' : 'aloha-button-align aloha-button-align-center',
+          'size' : 'small',
+          'onclick' : function () { that.align('center'); },
+          'tooltip' : i18n.t('button.aligncenter.tooltip'),
+          'toggle' : true
+        });
 
-			var that = this;
+        // add it to the floating menu
+        FloatingMenu.addButton(
+          'Aloha.continuoustext',
+          this.alignCenterButton,
+          i18nCore.t('floatingmenu.tab.format'),
+          1
+        );
 
-			if ( typeof range === 'undefined' ) {
-		        var range = Aloha.Selection.getRangeObject();   
-		    }
-			if ( Aloha.activeEditable ) {
-				return range.findMarkup(function() {
-					return jQuery(this).css('text-align') == that.alignment;
-			    }, Aloha.activeEditable.obj);
-			} else {
-				return null;
-			}
-		},
+        // create a new button
+        this.alignRightButton = new Aloha.ui.Button({
+          'name' : 'alignRight',
+          'iconClass' : 'aloha-button-align aloha-button-align-right',
+          'size' : 'small',
+          'onclick' : function () { that.align('right'); },
+          'tooltip' : i18n.t('button.alignright.tooltip'),
+          'toggle' : true
+        });
 
-		/**
-		 * Align the selection or remove it
-		 */
-		align: function ( tempAlignment ) {
+        // add it to the floating menu
+        FloatingMenu.addButton(
+          'Aloha.continuoustext',
+          this.alignRightButton,
+          i18nCore.t('floatingmenu.tab.format'),
+          1
+        );
 
-			var range = Aloha.Selection.getRangeObject();
+        // create a new button
+        this.alignJustifyButton = new Aloha.ui.Button({
+          'name' : 'alignJustify',
+          'iconClass' : 'aloha-button-align aloha-button-align-justify',
+          'size' : 'small',
+          'onclick' : function () { that.align('justify'); },
+          'tooltip' : i18n.t('button.alignjustify.tooltip'),
+          'toggle' : true
+        });
 
-			this.lastAlignment = this.alignment;
-			this.alignment = tempAlignment;
+        // add it to the floating menu
+        FloatingMenu.addButton(
+          'Aloha.continuoustext',
+          this.alignJustifyButton,
+          i18nCore.t('floatingmenu.tab.format'),
+          1
+        );
 
-		    if (Aloha.activeEditable) {
-		        if ( this.findAlignMarkup( range ) ) {
-		            this.removeAlign();
-		        } else {
-		        	this.insertAlign();
-		        }
-		    }
-		},
+    },
 
-		/**
-		 * Align the selection
-		 */
-		insertAlign: function () {
+    /**
+     * Check whether inside a align tag
+     * @param {GENTICS.Utils.RangeObject} range range where to insert the object (at start or end)
+     * @return markup
+     * @hide
+     */
+    findAlignMarkup: function ( range ) {
 
-			var that = this;
+      var that = this;
 
-			// do not align the range
-		    if ( this.findAlignMarkup( range ) ) {
-		        return;
-		    }
-		    // current selection or cursor position
-		    var range = Aloha.Selection.getRangeObject();
+      if ( typeof range === 'undefined' ) {
+            var range = Aloha.Selection.getRangeObject();
+        }
+      if ( Aloha.activeEditable ) {
+        return range.findMarkup(function() {
+          return jQuery(this).css('text-align') == that.alignment;
+          }, Aloha.activeEditable.obj);
+      } else {
+        return null;
+      }
+    },
 
-		    // Iterates the whole selectionTree and align
-			jQuery.each(Aloha.Selection.getRangeObject().getSelectionTree(), function () {
-				if(this.selection !== 'none' && this.domobj.nodeType !== 3) {
-					jQuery(this.domobj).css('text-align', that.alignment);
-				}
-			});
+    /**
+     * Align the selection or remove it
+     */
+    align: function ( tempAlignment ) {
 
-			if(this.alignment != this.lastAlignment)
-			{
-				switch(this.lastAlignment)
-				{
-					case 'right':
-						this.alignRightButton.setPressed(false);
-						break;
+      var range = Aloha.Selection.getRangeObject();
 
-					case 'left':
-						this.alignLeftButton.setPressed(false);
-						break;
+      this.lastAlignment = this.alignment;
+      this.alignment = tempAlignment;
 
-					case 'center':
-						this.alignCenterButton.setPressed(false);
-						break;
+        if (Aloha.activeEditable) {
+            if ( this.findAlignMarkup( range ) ) {
+                this.removeAlign();
+            } else {
+              this.insertAlign();
+            }
+        }
+    },
 
-					case 'justify':
-						this.alignJustifyButton.setPressed(false);
-						break;
-				}
-			}
+    /**
+     * Align the selection
+     */
+    insertAlign: function () {
 
-		    // select the (possibly modified) range
-		    range.select();
-		},
+      var that = this;
 
-		/**
-		 * Remove the alignment
-		 */
-		removeAlign: function () {
+      // do not align the range
+        if ( this.findAlignMarkup( range ) ) {
+            return;
+        }
+        // current selection or cursor position
+        var range = Aloha.Selection.getRangeObject();
 
-		    var range = Aloha.Selection.getRangeObject();
+        // Iterates the whole selectionTree and align
+      jQuery.each(Aloha.Selection.getRangeObject().getSelectionTree(), function () {
+        if(this.selection !== 'none' && this.domobj.nodeType !== 3) {
+          jQuery(this.domobj).css('text-align', that.alignment);
+        }
+      });
 
-		    if ( this.findAlignMarkup( range ) ) {
+      // FIXME: https://github.com/alohaeditor/Aloha-Editor/pull/362
+      if (!GENTICS.Utils.Dom.isEditingHost(range.getCommonAncestorContainer()))
+        jQuery(range.getCommonAncestorContainer()).css('text-align', this.alignment);
+      else
+        jQuery.each(Aloha.Selection.getRangeObject().getSelectionTree(), function () {
+          if(this.selection !== 'none' && this.domobj.nodeType !== 3) {
+            jQuery(this.domobj).css('text-align', that.alignment);
+          }
+        });
 
-		    	// Remove the alignment
-		    	range.findMarkup(function() {
-		            jQuery(this).css('text-align', '');
-		        }, Aloha.activeEditable.obj);
+      if(this.alignment != this.lastAlignment)
+      {
+        switch(this.lastAlignment)
+        {
+          case 'right':
+            this.alignRightButton.setPressed(false);
+            break;
 
-		        // select the (possibly modified) range
-		        range.select();
-		    }
-		}
-		
-	});
-	
+          case 'left':
+            this.alignLeftButton.setPressed(false);
+            break;
+
+          case 'center':
+            this.alignCenterButton.setPressed(false);
+            break;
+
+          case 'justify':
+            this.alignJustifyButton.setPressed(false);
+            break;
+        }
+      }
+
+        // select the (possibly modified) range
+        range.select();
+    },
+
+    /**
+     * Remove the alignment
+     */
+    removeAlign: function () {
+
+        var range = Aloha.Selection.getRangeObject();
+
+        if ( this.findAlignMarkup( range ) ) {
+
+          // Remove the alignment
+          range.findMarkup(function() {
+                jQuery(this).css('text-align', '');
+            }, Aloha.activeEditable.obj);
+
+            // select the (possibly modified) range
+            range.select();
+        }
+    }
+
+  });
+
 });

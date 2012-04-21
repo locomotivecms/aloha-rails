@@ -25,7 +25,7 @@ function(Aloha, Plugin, jQuery, FloatingMenu, i18n, i18nCore) {
 		/**
 		 * default button configuration
 		 */
-		config: [ 'strong', 'em', 'b', 'i','del','sub','sup', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'removeFormat'],
+		config: [ 'strong', 'em', 'b', 'i','s','sub','sup', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'removeFormat'],
 
 		/**
 		 * Initialize the plugin and set initialize flag on true
@@ -38,7 +38,6 @@ function(Aloha, Plugin, jQuery, FloatingMenu, i18n, i18nCore) {
 
 			// apply specific configuration if an editable has been activated
 			Aloha.bind('aloha-editable-activated',function (e, params) {
-				//debugger;
 				me.applyButtonConfig(params.editable.obj);
 			});
 
@@ -60,7 +59,6 @@ function(Aloha, Plugin, jQuery, FloatingMenu, i18n, i18nCore) {
 
 			var config = this.getEditableConfig(obj),
 				button, i, len;
-
 			// now iterate all buttons and show/hide them according to the config
 			for ( button in this.buttons) {
 				if (jQuery.inArray(button, config) != -1) {
@@ -102,6 +100,7 @@ function(Aloha, Plugin, jQuery, FloatingMenu, i18n, i18nCore) {
 			jQuery.each(this.config, function(j, button) {
 				switch( button ) {
 					// text level semantics:
+					case 'u':
 					case 'em':
 					case 'strong':
 					case 'b':
@@ -111,6 +110,7 @@ function(Aloha, Plugin, jQuery, FloatingMenu, i18n, i18nCore) {
 					case 'code':
 					case 'abbr':
 					case 'del':
+					case 's':
 					case 'sub':
 					case 'sup':
 						that.buttons[button] = {'button' : new Aloha.ui.Button({
@@ -121,14 +121,41 @@ function(Aloha, Plugin, jQuery, FloatingMenu, i18n, i18nCore) {
 								var
 									markup = jQuery('<'+button+'></'+button+'>'),
 									rangeObject = Aloha.Selection.rangeObject,
-									foundMarkup;
+									foundMarkup,
+									selectedCells = jQuery('.aloha-cell-selected');
+
+								// formating workaround for table plugin
+								if ( selectedCells.length > 0 ) {
+									var cellMarkupCounter = 0;
+									selectedCells.each( function () {
+										var cellContent = jQuery(this).find('div'),
+											cellMarkup = cellContent.find(button);
+										
+										if ( cellMarkup.length > 0 ) {
+											// unwrap all found markup text
+											// <td><b>text</b> foo <b>bar</b></td>
+											// and wrap the whole contents of the <td> into <b> tags
+											// <td><b>text foo bar</b></td>
+											cellMarkup.contents().unwrap();
+											cellMarkupCounter++;
+										}
+										cellContent.contents().wrap('<'+button+'></'+button+'>');
+									});
+
+									// remove all markup if all cells have markup
+									if ( cellMarkupCounter == selectedCells.length ) {
+										selectedCells.find(button).contents().unwrap();
+									}
+									return false;
+								}
+								// formating workaround for table plugin
 
 								// check whether the markup is found in the range (at the start of the range)
 								foundMarkup = rangeObject.findMarkup(function() {
 									return this.nodeName.toLowerCase() == markup.get(0).nodeName.toLowerCase();
 								}, Aloha.activeEditable.obj);
 
-								if (foundMarkup) {
+								if ( foundMarkup ) {
 									// remove the markup
 									if (rangeObject.isCollapsed()) {
 										// when the range is collapsed, we remove exactly the one DOM element
@@ -176,6 +203,33 @@ function(Aloha, Plugin, jQuery, FloatingMenu, i18n, i18nCore) {
 							'iconClass' : 'aloha-button ' + i18n.t('aloha-button-' + button),
 							'markup' : jQuery('<'+button+'></'+button+'>'),
 							'click' : function() {
+								var selectedCells = jQuery('.aloha-cell-selected');
+								// formating workaround for table plugin
+								if ( selectedCells.length > 0 ) {
+									var cellMarkupCounter = 0;
+									selectedCells.each( function () {
+										var cellContent = jQuery(this).find('div'),
+											cellMarkup = cellContent.find(button);
+										
+										if ( cellMarkup.length > 0 ) {
+											// unwrap all found markup text
+											// <td><b>text</b> foo <b>bar</b></td>
+											// and wrap the whole contents of the <td> into <b> tags
+											// <td><b>text foo bar</b></td>
+											cellMarkup.contents().unwrap();
+											cellMarkupCounter++;
+										}
+										cellContent.contents().wrap('<'+button+'></'+button+'>');
+									});
+
+									// remove all markup if all cells have markup
+									if ( cellMarkupCounter == selectedCells.length ) {
+										selectedCells.find(button).contents().unwrap();
+									}
+									return false;
+								}
+								// formating workaround for table plugin
+
 								Aloha.Selection.changeMarkupOnSelection(jQuery('<' + button + '></' + button + '>'));
 							}
 						});

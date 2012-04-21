@@ -352,8 +352,18 @@ function(Aloha, jQuery, FloatingMenu, Class, Range) {
 					// the start of the selection was not yet found, so look for it now
 					// check whether the start of the selection is found here
 
+					// Try to read the nodeType property and return if we do not have permission
+					// ie.: frame document to an external URL
+					var nodeType;
+					try {
+						nodeType = this.nodeType;
+					}
+					catch (e) {
+						return;
+					}
+
 					// check is dependent on the node type
-					switch(this.nodeType) {
+					switch(nodeType) {
 					case 3: // text node
 						if (this === rangeObject.startContainer) {
 							// the selection starts here
@@ -603,8 +613,17 @@ function(Aloha, jQuery, FloatingMenu, Class, Range) {
 		standardAttributesComparator: function(domobj, markupObject) {
 			var i, attr, classString, classes, classes2, classLength, attrLength, domAttrLength;
 
+			// Cloning the domobj works around an IE7 bug that crashes
+			// the browser. The exact place where IE7 crashes is when
+			// the domobj.attribute[i] is read below.
+			// The bug can be reproduced with an editable that contains
+			// some text and and image, by clicking inside and outside the
+			// editable a few times.
+			domobj = domobj.cloneNode(false);
+
 			if (domobj.attributes && domobj.attributes.length && domobj.attributes.length > 0) {
 				for (i = 0, domAttrLength = domobj.attributes.length; i < domAttrLength; i++) {
+					// Dereferencing attributes[i] here would crash IE7 if domobj were not cloned above
 					attr = domobj.attributes[i];
 					if (attr.nodeName.toLowerCase() == 'class' && attr.nodeValue.length > 0) {
 						classString = attr.nodeValue;

@@ -20,7 +20,17 @@
 */
 
 // define jquery and ext modules. They need to be available in global namespace
-define('aloha/jquery',[], function() { 
+define('aloha/jquery',[], function() {
+	// Work-around for http://bugs.jquery.com/ticket/9905
+	// and https://github.com/alohaeditor/Aloha-Editor/issues/397
+	if ( !Aloha.jQuery.support.getSetAttribute ) {
+		( function( global ) {
+			Aloha.jQuery.removeAttr = function( elem, name ) {
+				elem.removeAttribute( name );
+			};
+		}( Aloha ));
+	}
+
 	return Aloha.jQuery;
 });
 
@@ -56,6 +66,488 @@ define('aloha/ext',[], function() {
 	
 	return Ext; 
 });
+
+/*
+    http://www.JSON.org/json2.js
+    2011-02-23
+
+    Public Domain.
+
+    NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+
+    See http://www.JSON.org/js.html
+
+
+    This code should be minified before deployment.
+    See http://javascript.crockford.com/jsmin.html
+
+    USE YOUR OWN COPY. IT IS EXTREMELY UNWISE TO LOAD CODE FROM SERVERS YOU DO
+    NOT CONTROL.
+
+
+    This file creates a global JSON object containing two methods: stringify
+    and parse.
+
+        JSON.stringify(value, replacer, space)
+            value       any JavaScript value, usually an object or array.
+
+            replacer    an optional parameter that determines how object
+                        values are stringified for objects. It can be a
+                        function or an array of strings.
+
+            space       an optional parameter that specifies the indentation
+                        of nested structures. If it is omitted, the text will
+                        be packed without extra whitespace. If it is a number,
+                        it will specify the number of spaces to indent at each
+                        level. If it is a string (such as '\t' or '&nbsp;'),
+                        it contains the characters used to indent at each level.
+
+            This method produces a JSON text from a JavaScript value.
+
+            When an object value is found, if the object contains a toJSON
+            method, its toJSON method will be called and the result will be
+            stringified. A toJSON method does not serialize: it returns the
+            value represented by the name/value pair that should be serialized,
+            or undefined if nothing should be serialized. The toJSON method
+            will be passed the key associated with the value, and this will be
+            bound to the value
+
+            For example, this would serialize Dates as ISO strings.
+
+                Date.prototype.toJSON = function (key) {
+                    function f(n) {
+                        // Format integers to have at least two digits.
+                        return n < 10 ? '0' + n : n;
+                    }
+
+                    return this.getUTCFullYear()   + '-' +
+                         f(this.getUTCMonth() + 1) + '-' +
+                         f(this.getUTCDate())      + 'T' +
+                         f(this.getUTCHours())     + ':' +
+                         f(this.getUTCMinutes())   + ':' +
+                         f(this.getUTCSeconds())   + 'Z';
+                };
+
+            You can provide an optional replacer method. It will be passed the
+            key and value of each member, with this bound to the containing
+            object. The value that is returned from your method will be
+            serialized. If your method returns undefined, then the member will
+            be excluded from the serialization.
+
+            If the replacer parameter is an array of strings, then it will be
+            used to select the members to be serialized. It filters the results
+            such that only members with keys listed in the replacer array are
+            stringified.
+
+            Values that do not have JSON representations, such as undefined or
+            functions, will not be serialized. Such values in objects will be
+            dropped; in arrays they will be replaced with null. You can use
+            a replacer function to replace those with JSON values.
+            JSON.stringify(undefined) returns undefined.
+
+            The optional space parameter produces a stringification of the
+            value that is filled with line breaks and indentation to make it
+            easier to read.
+
+            If the space parameter is a non-empty string, then that string will
+            be used for indentation. If the space parameter is a number, then
+            the indentation will be that many spaces.
+
+            Example:
+
+            text = JSON.stringify(['e', {pluribus: 'unum'}]);
+            // text is '["e",{"pluribus":"unum"}]'
+
+
+            text = JSON.stringify(['e', {pluribus: 'unum'}], null, '\t');
+            // text is '[\n\t"e",\n\t{\n\t\t"pluribus": "unum"\n\t}\n]'
+
+            text = JSON.stringify([new Date()], function (key, value) {
+                return this[key] instanceof Date ?
+                    'Date(' + this[key] + ')' : value;
+            });
+            // text is '["Date(---current time---)"]'
+
+
+        JSON.parse(text, reviver)
+            This method parses a JSON text to produce an object or array.
+            It can throw a SyntaxError exception.
+
+            The optional reviver parameter is a function that can filter and
+            transform the results. It receives each of the keys and values,
+            and its return value is used instead of the original value.
+            If it returns what it received, then the structure is not modified.
+            If it returns undefined then the member is deleted.
+
+            Example:
+
+            // Parse the text. Values that look like ISO date strings will
+            // be converted to Date objects.
+
+            myData = JSON.parse(text, function (key, value) {
+                var a;
+                if (typeof value === 'string') {
+                    a =
+/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)Z$/.exec(value);
+                    if (a) {
+                        return new Date(Date.UTC(+a[1], +a[2] - 1, +a[3], +a[4],
+                            +a[5], +a[6]));
+                    }
+                }
+                return value;
+            });
+
+            myData = JSON.parse('["Date(09/09/2001)"]', function (key, value) {
+                var d;
+                if (typeof value === 'string' &&
+                        value.slice(0, 5) === 'Date(' &&
+                        value.slice(-1) === ')') {
+                    d = new Date(value.slice(5, -1));
+                    if (d) {
+                        return d;
+                    }
+                }
+                return value;
+            });
+
+
+    This is a reference implementation. You are free to copy, modify, or
+    redistribute.
+*/
+
+/*jslint evil: true, strict: false, regexp: false */
+
+/*members "", "\b", "\t", "\n", "\f", "\r", "\"", JSON, "\\", apply,
+    call, charCodeAt, getUTCDate, getUTCFullYear, getUTCHours,
+    getUTCMinutes, getUTCMonth, getUTCSeconds, hasOwnProperty, join,
+    lastIndex, length, parse, prototype, push, replace, slice, stringify,
+    test, toJSON, toString, valueOf
+*/
+
+
+// Create a JSON object only if one does not already exist. We create the
+// methods in a closure to avoid creating global variables.
+define( 'util/json2', [], function(){} );
+
+var JSON;
+if (!JSON) {
+    JSON = {};
+}
+
+(function () {
+    
+
+    function f(n) {
+        // Format integers to have at least two digits.
+        return n < 10 ? '0' + n : n;
+    }
+
+    if (typeof Date.prototype.toJSON !== 'function') {
+
+        Date.prototype.toJSON = function (key) {
+
+            return isFinite(this.valueOf()) ?
+                this.getUTCFullYear()     + '-' +
+                f(this.getUTCMonth() + 1) + '-' +
+                f(this.getUTCDate())      + 'T' +
+                f(this.getUTCHours())     + ':' +
+                f(this.getUTCMinutes())   + ':' +
+                f(this.getUTCSeconds())   + 'Z' : null;
+        };
+
+        String.prototype.toJSON      =
+            Number.prototype.toJSON  =
+            Boolean.prototype.toJSON = function (key) {
+                return this.valueOf();
+            };
+    }
+
+    var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+        escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+        gap,
+        indent,
+        meta = {    // table of character substitutions
+            '\b': '\\b',
+            '\t': '\\t',
+            '\n': '\\n',
+            '\f': '\\f',
+            '\r': '\\r',
+            '"' : '\\"',
+            '\\': '\\\\'
+        },
+        rep;
+
+
+    function quote(string) {
+
+// If the string contains no control characters, no quote characters, and no
+// backslash characters, then we can safely slap some quotes around it.
+// Otherwise we must also replace the offending characters with safe escape
+// sequences.
+
+        escapable.lastIndex = 0;
+        return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
+            var c = meta[a];
+            return typeof c === 'string' ? c :
+                '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+        }) + '"' : '"' + string + '"';
+    }
+
+
+    function str(key, holder) {
+
+// Produce a string from holder[key].
+
+        var i,          // The loop counter.
+            k,          // The member key.
+            v,          // The member value.
+            length,
+            mind = gap,
+            partial,
+            value = holder[key];
+
+// If the value has a toJSON method, call it to obtain a replacement value.
+
+        if (value && typeof value === 'object' &&
+                typeof value.toJSON === 'function') {
+            value = value.toJSON(key);
+        }
+
+// If we were called with a replacer function, then call the replacer to
+// obtain a replacement value.
+
+        if (typeof rep === 'function') {
+            value = rep.call(holder, key, value);
+        }
+
+// What happens next depends on the value's type.
+
+        switch (typeof value) {
+        case 'string':
+            return quote(value);
+
+        case 'number':
+
+// JSON numbers must be finite. Encode non-finite numbers as null.
+
+            return isFinite(value) ? String(value) : 'null';
+
+        case 'boolean':
+        case 'null':
+
+// If the value is a boolean or null, convert it to a string. Note:
+// typeof null does not produce 'null'. The case is included here in
+// the remote chance that this gets fixed someday.
+
+            return String(value);
+
+// If the type is 'object', we might be dealing with an object or an array or
+// null.
+
+        case 'object':
+
+// Due to a specification blunder in ECMAScript, typeof null is 'object',
+// so watch out for that case.
+
+            if (!value) {
+                return 'null';
+            }
+
+// Make an array to hold the partial results of stringifying this object value.
+
+            gap += indent;
+            partial = [];
+
+// Is the value an array?
+
+            if (Object.prototype.toString.apply(value) === '[object Array]') {
+
+// The value is an array. Stringify every element. Use null as a placeholder
+// for non-JSON values.
+
+                length = value.length;
+                for (i = 0; i < length; i += 1) {
+                    partial[i] = str(i, value) || 'null';
+                }
+
+// Join all of the elements together, separated with commas, and wrap them in
+// brackets.
+
+                v = partial.length === 0 ? '[]' : gap ?
+                    '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']' :
+                    '[' + partial.join(',') + ']';
+                gap = mind;
+                return v;
+            }
+
+// If the replacer is an array, use it to select the members to be stringified.
+
+            if (rep && typeof rep === 'object') {
+                length = rep.length;
+                for (i = 0; i < length; i += 1) {
+                    if (typeof rep[i] === 'string') {
+                        k = rep[i];
+                        v = str(k, value);
+                        if (v) {
+                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                        }
+                    }
+                }
+            } else {
+
+// Otherwise, iterate through all of the keys in the object.
+
+                for (k in value) {
+                    if (Object.prototype.hasOwnProperty.call(value, k)) {
+                        v = str(k, value);
+                        if (v) {
+                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                        }
+                    }
+                }
+            }
+
+// Join all of the member texts together, separated with commas,
+// and wrap them in braces.
+
+            v = partial.length === 0 ? '{}' : gap ?
+                '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' :
+                '{' + partial.join(',') + '}';
+            gap = mind;
+            return v;
+        }
+    }
+
+// If the JSON object does not yet have a stringify method, give it one.
+
+    if (typeof JSON.stringify !== 'function') {
+        JSON.stringify = function (value, replacer, space) {
+
+// The stringify method takes a value and an optional replacer, and an optional
+// space parameter, and returns a JSON text. The replacer can be a function
+// that can replace values, or an array of strings that will select the keys.
+// A default replacer method can be provided. Use of the space parameter can
+// produce text that is more easily readable.
+
+            var i;
+            gap = '';
+            indent = '';
+
+// If the space parameter is a number, make an indent string containing that
+// many spaces.
+
+            if (typeof space === 'number') {
+                for (i = 0; i < space; i += 1) {
+                    indent += ' ';
+                }
+
+// If the space parameter is a string, it will be used as the indent string.
+
+            } else if (typeof space === 'string') {
+                indent = space;
+            }
+
+// If there is a replacer, it must be a function or an array.
+// Otherwise, throw an error.
+
+            rep = replacer;
+            if (replacer && typeof replacer !== 'function' &&
+                    (typeof replacer !== 'object' ||
+                    typeof replacer.length !== 'number')) {
+                throw new Error('JSON.stringify');
+            }
+
+// Make a fake root object containing our value under the key of ''.
+// Return the result of stringifying the value.
+
+            return str('', {'': value});
+        };
+    }
+
+
+// If the JSON object does not yet have a parse method, give it one.
+
+    if (typeof JSON.parse !== 'function') {
+        JSON.parse = function (text, reviver) {
+
+// The parse method takes a text and an optional reviver function, and returns
+// a JavaScript value if the text is a valid JSON text.
+
+            var j;
+
+            function walk(holder, key) {
+
+// The walk method is used to recursively walk the resulting structure so
+// that modifications can be made.
+
+                var k, v, value = holder[key];
+                if (value && typeof value === 'object') {
+                    for (k in value) {
+                        if (Object.prototype.hasOwnProperty.call(value, k)) {
+                            v = walk(value, k);
+                            if (v !== undefined) {
+                                value[k] = v;
+                            } else {
+                                delete value[k];
+                            }
+                        }
+                    }
+                }
+                return reviver.call(holder, key, value);
+            }
+
+
+// Parsing happens in four stages. In the first stage, we replace certain
+// Unicode characters with escape sequences. JavaScript handles many characters
+// incorrectly, either silently deleting them, or treating them as line endings.
+
+            text = String(text);
+            cx.lastIndex = 0;
+            if (cx.test(text)) {
+                text = text.replace(cx, function (a) {
+                    return '\\u' +
+                        ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+                });
+            }
+
+// In the second stage, we run the text against regular expressions that look
+// for non-JSON patterns. We are especially concerned with '()' and 'new'
+// because they can cause invocation, and '=' because it can cause mutation.
+// But just to be safe, we want to reject all unexpected forms.
+
+// We split the second stage into 4 regexp operations in order to work around
+// crippling inefficiencies in IE's and Safari's regexp engines. First we
+// replace the JSON backslash pairs with '@' (a non-JSON character). Second, we
+// replace all simple value tokens with ']' characters. Third, we delete all
+// open brackets that follow a colon or comma or that begin the text. Finally,
+// we look to see that the remaining characters are only whitespace or ']' or
+// ',' or ':' or '{' or '}'. If that is so, then the text is safe for eval.
+
+            if (/^[\],:{}\s]*$/
+                    .test(text.replace(/\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g, '@')
+                        .replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']')
+                        .replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
+
+// In the third stage we use the eval function to compile the text into a
+// JavaScript structure. The '{' operator is subject to a syntactic ambiguity
+// in JavaScript: it can begin a block or an object literal. We wrap the text
+// in parens to eliminate the ambiguity.
+
+                j = eval('(' + text + ')');
+
+// In the optional fourth stage, we recursively walk the new structure, passing
+// each name/value pair to a reviver function for possible transformation.
+
+                return typeof reviver === 'function' ?
+                    walk({'': j}, '') : j;
+            }
+
+// If the text is not JSON parseable, then a SyntaxError is thrown.
+
+            throw new SyntaxError('JSON.parse');
+        };
+    }
+}());
 
 define('vendor/jquery.json-2.2.min',['aloha/jquery'],
 function($) {$.toJSON=function(o)
@@ -125,9 +617,9 @@ return'"'+string+'"';};var _escapeable=/["\\\x00-\x1f\x7f-\x9f]/g;var _meta={'\b
 
 define('vendor/jquery.store',[
  'aloha/jquery',
- 'vendor/jquery.json-2.2.min'
+ 'util/json2'
 ],
-function($, _1, undefined) {
+function($, __unused_json, undefined) {
 
 /**********************************************************************************
  * $.store base and convinience accessor
@@ -137,19 +629,6 @@ $.store = function( driver, serializers )
 {
 	var JSON = window.JSON
 		that = this;
-	
-	// IE fix
-	if (typeof JSON === 'undefined' || !JSON) {
-		/*
-		 * The GENTICS global namespace object. If GENTICS is already defined, the
-		 * existing GENTICS object will not be overwritten so that defined
-		 * namespaces are preserved.
-		 */
-		var JSON = function () {
-			this.stringigy = function () {};
-			this.parse = function () {};
-		};
-	}
 
 	if( typeof driver == 'string' )
 	{
@@ -533,6 +1012,43 @@ $.store.serializers = {
 		}
 	}
 };
+
+
+	// We don't want to use window storage for ie7 with aloha because this causes massive issues when dealing with frames. 
+	// Window.name will change the framename and this will cause links with target attribute to stop working properly. 
+	// We remove the windowName driver and add the void driver which won't store any information.
+	if ( $.browser.msie && $.browser.version  == "7.0" ) {
+		delete($.store.drivers.windowName);
+		var voidDriver = {
+				ident: "$.store.drivers.voidDriver",
+				scope: 'void',
+				cache: {},
+				encodes: true,
+				available: function()
+				{
+					return true;
+				},
+				init: function()
+				{
+				},
+				save: function()
+				{
+				},
+				get: function( key )
+				{
+				},
+				set: function( key, value )
+				{
+				},
+				del: function( key )
+				{
+				},
+				flush: function()
+				{
+				}
+			};
+		$.store.drivers.voidDriver=voidDriver;
+	} 
 
 });
 
@@ -3779,488 +4295,6 @@ rangy.createModule("DomUtil", function(api, module) {
     });
 });
 
-/*
-    http://www.JSON.org/json2.js
-    2011-02-23
-
-    Public Domain.
-
-    NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
-
-    See http://www.JSON.org/js.html
-
-
-    This code should be minified before deployment.
-    See http://javascript.crockford.com/jsmin.html
-
-    USE YOUR OWN COPY. IT IS EXTREMELY UNWISE TO LOAD CODE FROM SERVERS YOU DO
-    NOT CONTROL.
-
-
-    This file creates a global JSON object containing two methods: stringify
-    and parse.
-
-        JSON.stringify(value, replacer, space)
-            value       any JavaScript value, usually an object or array.
-
-            replacer    an optional parameter that determines how object
-                        values are stringified for objects. It can be a
-                        function or an array of strings.
-
-            space       an optional parameter that specifies the indentation
-                        of nested structures. If it is omitted, the text will
-                        be packed without extra whitespace. If it is a number,
-                        it will specify the number of spaces to indent at each
-                        level. If it is a string (such as '\t' or '&nbsp;'),
-                        it contains the characters used to indent at each level.
-
-            This method produces a JSON text from a JavaScript value.
-
-            When an object value is found, if the object contains a toJSON
-            method, its toJSON method will be called and the result will be
-            stringified. A toJSON method does not serialize: it returns the
-            value represented by the name/value pair that should be serialized,
-            or undefined if nothing should be serialized. The toJSON method
-            will be passed the key associated with the value, and this will be
-            bound to the value
-
-            For example, this would serialize Dates as ISO strings.
-
-                Date.prototype.toJSON = function (key) {
-                    function f(n) {
-                        // Format integers to have at least two digits.
-                        return n < 10 ? '0' + n : n;
-                    }
-
-                    return this.getUTCFullYear()   + '-' +
-                         f(this.getUTCMonth() + 1) + '-' +
-                         f(this.getUTCDate())      + 'T' +
-                         f(this.getUTCHours())     + ':' +
-                         f(this.getUTCMinutes())   + ':' +
-                         f(this.getUTCSeconds())   + 'Z';
-                };
-
-            You can provide an optional replacer method. It will be passed the
-            key and value of each member, with this bound to the containing
-            object. The value that is returned from your method will be
-            serialized. If your method returns undefined, then the member will
-            be excluded from the serialization.
-
-            If the replacer parameter is an array of strings, then it will be
-            used to select the members to be serialized. It filters the results
-            such that only members with keys listed in the replacer array are
-            stringified.
-
-            Values that do not have JSON representations, such as undefined or
-            functions, will not be serialized. Such values in objects will be
-            dropped; in arrays they will be replaced with null. You can use
-            a replacer function to replace those with JSON values.
-            JSON.stringify(undefined) returns undefined.
-
-            The optional space parameter produces a stringification of the
-            value that is filled with line breaks and indentation to make it
-            easier to read.
-
-            If the space parameter is a non-empty string, then that string will
-            be used for indentation. If the space parameter is a number, then
-            the indentation will be that many spaces.
-
-            Example:
-
-            text = JSON.stringify(['e', {pluribus: 'unum'}]);
-            // text is '["e",{"pluribus":"unum"}]'
-
-
-            text = JSON.stringify(['e', {pluribus: 'unum'}], null, '\t');
-            // text is '[\n\t"e",\n\t{\n\t\t"pluribus": "unum"\n\t}\n]'
-
-            text = JSON.stringify([new Date()], function (key, value) {
-                return this[key] instanceof Date ?
-                    'Date(' + this[key] + ')' : value;
-            });
-            // text is '["Date(---current time---)"]'
-
-
-        JSON.parse(text, reviver)
-            This method parses a JSON text to produce an object or array.
-            It can throw a SyntaxError exception.
-
-            The optional reviver parameter is a function that can filter and
-            transform the results. It receives each of the keys and values,
-            and its return value is used instead of the original value.
-            If it returns what it received, then the structure is not modified.
-            If it returns undefined then the member is deleted.
-
-            Example:
-
-            // Parse the text. Values that look like ISO date strings will
-            // be converted to Date objects.
-
-            myData = JSON.parse(text, function (key, value) {
-                var a;
-                if (typeof value === 'string') {
-                    a =
-/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)Z$/.exec(value);
-                    if (a) {
-                        return new Date(Date.UTC(+a[1], +a[2] - 1, +a[3], +a[4],
-                            +a[5], +a[6]));
-                    }
-                }
-                return value;
-            });
-
-            myData = JSON.parse('["Date(09/09/2001)"]', function (key, value) {
-                var d;
-                if (typeof value === 'string' &&
-                        value.slice(0, 5) === 'Date(' &&
-                        value.slice(-1) === ')') {
-                    d = new Date(value.slice(5, -1));
-                    if (d) {
-                        return d;
-                    }
-                }
-                return value;
-            });
-
-
-    This is a reference implementation. You are free to copy, modify, or
-    redistribute.
-*/
-
-/*jslint evil: true, strict: false, regexp: false */
-
-/*members "", "\b", "\t", "\n", "\f", "\r", "\"", JSON, "\\", apply,
-    call, charCodeAt, getUTCDate, getUTCFullYear, getUTCHours,
-    getUTCMinutes, getUTCMonth, getUTCSeconds, hasOwnProperty, join,
-    lastIndex, length, parse, prototype, push, replace, slice, stringify,
-    test, toJSON, toString, valueOf
-*/
-
-
-// Create a JSON object only if one does not already exist. We create the
-// methods in a closure to avoid creating global variables.
-define( 'util/json2', [], function(){} );
-
-var JSON;
-if (!JSON) {
-    JSON = {};
-}
-
-(function () {
-    
-
-    function f(n) {
-        // Format integers to have at least two digits.
-        return n < 10 ? '0' + n : n;
-    }
-
-    if (typeof Date.prototype.toJSON !== 'function') {
-
-        Date.prototype.toJSON = function (key) {
-
-            return isFinite(this.valueOf()) ?
-                this.getUTCFullYear()     + '-' +
-                f(this.getUTCMonth() + 1) + '-' +
-                f(this.getUTCDate())      + 'T' +
-                f(this.getUTCHours())     + ':' +
-                f(this.getUTCMinutes())   + ':' +
-                f(this.getUTCSeconds())   + 'Z' : null;
-        };
-
-        String.prototype.toJSON      =
-            Number.prototype.toJSON  =
-            Boolean.prototype.toJSON = function (key) {
-                return this.valueOf();
-            };
-    }
-
-    var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
-        escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
-        gap,
-        indent,
-        meta = {    // table of character substitutions
-            '\b': '\\b',
-            '\t': '\\t',
-            '\n': '\\n',
-            '\f': '\\f',
-            '\r': '\\r',
-            '"' : '\\"',
-            '\\': '\\\\'
-        },
-        rep;
-
-
-    function quote(string) {
-
-// If the string contains no control characters, no quote characters, and no
-// backslash characters, then we can safely slap some quotes around it.
-// Otherwise we must also replace the offending characters with safe escape
-// sequences.
-
-        escapable.lastIndex = 0;
-        return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
-            var c = meta[a];
-            return typeof c === 'string' ? c :
-                '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
-        }) + '"' : '"' + string + '"';
-    }
-
-
-    function str(key, holder) {
-
-// Produce a string from holder[key].
-
-        var i,          // The loop counter.
-            k,          // The member key.
-            v,          // The member value.
-            length,
-            mind = gap,
-            partial,
-            value = holder[key];
-
-// If the value has a toJSON method, call it to obtain a replacement value.
-
-        if (value && typeof value === 'object' &&
-                typeof value.toJSON === 'function') {
-            value = value.toJSON(key);
-        }
-
-// If we were called with a replacer function, then call the replacer to
-// obtain a replacement value.
-
-        if (typeof rep === 'function') {
-            value = rep.call(holder, key, value);
-        }
-
-// What happens next depends on the value's type.
-
-        switch (typeof value) {
-        case 'string':
-            return quote(value);
-
-        case 'number':
-
-// JSON numbers must be finite. Encode non-finite numbers as null.
-
-            return isFinite(value) ? String(value) : 'null';
-
-        case 'boolean':
-        case 'null':
-
-// If the value is a boolean or null, convert it to a string. Note:
-// typeof null does not produce 'null'. The case is included here in
-// the remote chance that this gets fixed someday.
-
-            return String(value);
-
-// If the type is 'object', we might be dealing with an object or an array or
-// null.
-
-        case 'object':
-
-// Due to a specification blunder in ECMAScript, typeof null is 'object',
-// so watch out for that case.
-
-            if (!value) {
-                return 'null';
-            }
-
-// Make an array to hold the partial results of stringifying this object value.
-
-            gap += indent;
-            partial = [];
-
-// Is the value an array?
-
-            if (Object.prototype.toString.apply(value) === '[object Array]') {
-
-// The value is an array. Stringify every element. Use null as a placeholder
-// for non-JSON values.
-
-                length = value.length;
-                for (i = 0; i < length; i += 1) {
-                    partial[i] = str(i, value) || 'null';
-                }
-
-// Join all of the elements together, separated with commas, and wrap them in
-// brackets.
-
-                v = partial.length === 0 ? '[]' : gap ?
-                    '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']' :
-                    '[' + partial.join(',') + ']';
-                gap = mind;
-                return v;
-            }
-
-// If the replacer is an array, use it to select the members to be stringified.
-
-            if (rep && typeof rep === 'object') {
-                length = rep.length;
-                for (i = 0; i < length; i += 1) {
-                    if (typeof rep[i] === 'string') {
-                        k = rep[i];
-                        v = str(k, value);
-                        if (v) {
-                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
-                        }
-                    }
-                }
-            } else {
-
-// Otherwise, iterate through all of the keys in the object.
-
-                for (k in value) {
-                    if (Object.prototype.hasOwnProperty.call(value, k)) {
-                        v = str(k, value);
-                        if (v) {
-                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
-                        }
-                    }
-                }
-            }
-
-// Join all of the member texts together, separated with commas,
-// and wrap them in braces.
-
-            v = partial.length === 0 ? '{}' : gap ?
-                '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' :
-                '{' + partial.join(',') + '}';
-            gap = mind;
-            return v;
-        }
-    }
-
-// If the JSON object does not yet have a stringify method, give it one.
-
-    if (typeof JSON.stringify !== 'function') {
-        JSON.stringify = function (value, replacer, space) {
-
-// The stringify method takes a value and an optional replacer, and an optional
-// space parameter, and returns a JSON text. The replacer can be a function
-// that can replace values, or an array of strings that will select the keys.
-// A default replacer method can be provided. Use of the space parameter can
-// produce text that is more easily readable.
-
-            var i;
-            gap = '';
-            indent = '';
-
-// If the space parameter is a number, make an indent string containing that
-// many spaces.
-
-            if (typeof space === 'number') {
-                for (i = 0; i < space; i += 1) {
-                    indent += ' ';
-                }
-
-// If the space parameter is a string, it will be used as the indent string.
-
-            } else if (typeof space === 'string') {
-                indent = space;
-            }
-
-// If there is a replacer, it must be a function or an array.
-// Otherwise, throw an error.
-
-            rep = replacer;
-            if (replacer && typeof replacer !== 'function' &&
-                    (typeof replacer !== 'object' ||
-                    typeof replacer.length !== 'number')) {
-                throw new Error('JSON.stringify');
-            }
-
-// Make a fake root object containing our value under the key of ''.
-// Return the result of stringifying the value.
-
-            return str('', {'': value});
-        };
-    }
-
-
-// If the JSON object does not yet have a parse method, give it one.
-
-    if (typeof JSON.parse !== 'function') {
-        JSON.parse = function (text, reviver) {
-
-// The parse method takes a text and an optional reviver function, and returns
-// a JavaScript value if the text is a valid JSON text.
-
-            var j;
-
-            function walk(holder, key) {
-
-// The walk method is used to recursively walk the resulting structure so
-// that modifications can be made.
-
-                var k, v, value = holder[key];
-                if (value && typeof value === 'object') {
-                    for (k in value) {
-                        if (Object.prototype.hasOwnProperty.call(value, k)) {
-                            v = walk(value, k);
-                            if (v !== undefined) {
-                                value[k] = v;
-                            } else {
-                                delete value[k];
-                            }
-                        }
-                    }
-                }
-                return reviver.call(holder, key, value);
-            }
-
-
-// Parsing happens in four stages. In the first stage, we replace certain
-// Unicode characters with escape sequences. JavaScript handles many characters
-// incorrectly, either silently deleting them, or treating them as line endings.
-
-            text = String(text);
-            cx.lastIndex = 0;
-            if (cx.test(text)) {
-                text = text.replace(cx, function (a) {
-                    return '\\u' +
-                        ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
-                });
-            }
-
-// In the second stage, we run the text against regular expressions that look
-// for non-JSON patterns. We are especially concerned with '()' and 'new'
-// because they can cause invocation, and '=' because it can cause mutation.
-// But just to be safe, we want to reject all unexpected forms.
-
-// We split the second stage into 4 regexp operations in order to work around
-// crippling inefficiencies in IE's and Safari's regexp engines. First we
-// replace the JSON backslash pairs with '@' (a non-JSON character). Second, we
-// replace all simple value tokens with ']' characters. Third, we delete all
-// open brackets that follow a colon or comma or that begin the text. Finally,
-// we look to see that the remaining characters are only whitespace or ']' or
-// ',' or ':' or '{' or '}'. If that is so, then the text is safe for eval.
-
-            if (/^[\],:{}\s]*$/
-                    .test(text.replace(/\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g, '@')
-                        .replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']')
-                        .replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
-
-// In the third stage we use the eval function to compile the text into a
-// JavaScript structure. The '{' operator is subject to a syntactic ambiguity
-// in JavaScript: it can begin a block or an object literal. We wrap the text
-// in parens to eliminate the ambiguity.
-
-                j = eval('(' + text + ')');
-
-// In the optional fourth stage, we recursively walk the new structure, passing
-// each name/value pair to a reviver function for possible transformation.
-
-                return typeof reviver === 'function' ?
-                    walk({'': j}, '') : j;
-            }
-
-// If the text is not JSON parseable, then a SyntaxError is thrown.
-
-            throw new SyntaxError('JSON.parse');
-        };
-    }
-}());
-
 /* Simple JavaScript Inheritance
  * By John Resig http://ejohn.org/
  * MIT Licensed.
@@ -4407,9 +4441,21 @@ GENTICS.Utils.guid = function () {
 
 })(window);
 
+/**
+ * ecma5schims.js - Shim for ECMA5 compatibility
+ * (http://en.wikipedia.org/wiki/Shim_%28computing%29)
+ *
+ * A shim library that implements common functions that are missing on some
+ * environments in order to complete ECMA5 compatibility across all major
+ * browsers.
+ *
+ * TODO: This code needs to be refactored so as to conform to Aloha coding
+ *       standards.  It is also severly lacking in documentation.  Please take
+ *       note of: https://github.com/alohaeditor/Aloha-Editor/wiki/Commit-Checklist .
+ */
 
-define('aloha/ecma5shims',[],
-function(){
+define('aloha/ecma5shims',[], function(){
+  
 
   var shims = {
     // Function bind
@@ -4645,12 +4691,16 @@ function(){
     if (node2 != useNode2) useNode2.parentNode.removeChild(useNode2);
     return result;
 
-
     //node.ownerDocument gives the document object, which isn't the right info for a disconnect
-    function getRootParent(node) {
-      do { var parent = node; }
-      while (node = node.parentNode);
-      return parent;
+    function getRootParent( node ) {
+		var parent = null;
+
+		if ( node ) {
+			do { parent = node; }
+			while ( node = node.parentNode );
+		}
+
+		return parent;
     }
 
     //Compare Position - MIT Licensed, John Resig; http://ejohn.org/blog/comparing-document-position/
@@ -4792,22 +4842,22 @@ var Dom = Class.extend({
 	 */
 	tags: {
 		'flow' : [ 'a', 'abbr', 'address', 'area', 'article', 'aside', 'audio',
-				'b', 'bdo', 'blockquote', 'br', 'button', 'canvas', 'cite', 'code',
+				'b', 'bdi','bdo', 'blockquote', 'br', 'button', 'canvas', 'cite', 'code',
 				'command', 'datalist', 'del', 'details', 'dfn', 'div', 'dl', 'em',
 				'embed', 'fieldset', 'figure', 'footer', 'form', 'h1', 'h2', 'h3',
 				'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'i', 'iframe', 'img',
 				'input', 'ins', 'kbd', 'keygen', 'label', 'map', 'mark', 'math',
 				'menu', 'meter', 'nav', 'noscript', 'object', 'ol', 'output', 'p',
-				'pre', 'progress', 'q', 'ruby', 'samp', 'script', 'section',
+				'pre', 'progress', 'q', 'ruby', 's', 'samp', 'script', 'section',
 				'select', 'small', 'span', 'strong', 'style', 'sub', 'sup', 'svg',
-				'table', 'textarea', 'time', 'ul', 'var', 'video', 'wbr', '#text' ],
-		'phrasing' : [ 'a', 'abbr', 'area', 'audio', 'b', 'bdo', 'br', 'button',
+				'table', 'textarea', 'time', 'u', 'ul', 'var', 'video', 'wbr', '#text' ],
+		'phrasing' : [ 'a', 'abbr', 'area', 'audio', 'b', 'bdi', 'bdo', 'br', 'button',
 				'canvas', 'cite', 'code', 'command', 'datalist', 'del', 'dfn',
 				'em', 'embed', 'i', 'iframe', 'img', 'input', 'ins', 'kbd',
 				'keygen', 'label', 'map', 'mark', 'math', 'meter', 'noscript',
 				'object', 'output', 'progress', 'q', 'ruby', 'samp', 'script',
 				'select', 'small', 'span', 'strong', 'sub', 'sup', 'svg',
-				'textarea', 'time', 'var', 'video', 'wbr', '#text' ]
+				'textarea', 'time', 'u', 'var', 'video', 'wbr', '#text' ]
 	},
 
 	/**
@@ -4920,6 +4970,7 @@ var Dom = Class.extend({
 		'title' : '#text',
 		'tr' : ['th', 'td'],
 		'track' : 'empty',
+		'u' : 'phrasing',
 		'ul' : 'li',
 		'var' : 'phrasing',
 		'video' : 'source', // transparent
@@ -5357,8 +5408,19 @@ var Dom = Class.extend({
 
 		// iterate through all sub nodes
 		startObject.contents().each(function(index) {
+
+			// Try to read the nodeType property and return if we do not have permission
+			// ie.: frame document to an external URL
+			var nodeType;
+			try {
+				nodeType = this.nodeType;
+			}
+			catch (e) {
+				return;
+			}
+
 			// decide further actions by node type
-			switch(this.nodeType) {
+			switch(nodeType) {
 			// found a non-text node
 			case 1:
 				if (prevNode && prevNode.nodeName == this.nodeName) {
@@ -6534,6 +6596,12 @@ define('aloha/core',[
 function ( jQuery, PluginManager ) {
 	
 
+	// Aloha Editor does not support Internet Explorer 6.  ExtJS style fixes for
+	// IE6 which are applied through the "ext-ie6" class cause visual bugs in
+	// IE9, and so we remove it so that IE6 fixes are not applied.
+	Aloha.ready(function() {
+		jQuery('.ext-ie6').removeClass('ext-ie6');
+	});
 
 	//----------------------------------------
 	// Private variables
@@ -6733,6 +6801,8 @@ function ( jQuery, PluginManager ) {
 		 * Fetches plugins the user wants to have loaded. Returns all plugins the user
 		 * has specified with the data-plugins property as array, with the bundle
 		 * name in front.
+		 * It's also possible to use 'Aloha.settings.plugins.load' to define the plugins
+		 * to load.
 		 *
 		 * @return array
 		 * @internal
@@ -6742,13 +6812,20 @@ function ( jQuery, PluginManager ) {
 			var
 				plugins = jQuery('[data-aloha-plugins]').data('aloha-plugins');
 
+			// load aloha plugins from config
+			if ( typeof Aloha.settings.plugins != 'undefined' && typeof Aloha.settings.plugins.load != 'undefined' ) {
+				plugins = Aloha.settings.plugins.load;
+				if (plugins instanceof Array) {
+					return plugins;
+				}
+			}
+
 			// Determine Plugins
 			if ( typeof plugins === 'string' && plugins !== "") {
 				return plugins.replace(/\s+/g, '').split(',');
 			}
 			// Return
 			return [];
-			
 		},
 
 		/**
@@ -7027,6 +7104,7 @@ function ( jQuery, PluginManager ) {
 
 		/**
 		 * Determines the Aloha Url
+		 * Uses Aloha.settings.baseUrl if set.
 		 * @method
 		 * @return {String} alohaUrl
 		 */
@@ -7034,7 +7112,11 @@ function ( jQuery, PluginManager ) {
 			// aloha base path is defined by a script tag with 2 data attributes
 			var requireJs = jQuery('[data-aloha-plugins]'),
 				baseUrl = ( requireJs.length ) ? requireJs[0].src.replace( /\/?aloha.js$/ , '' ) : '';
-				
+			
+			if ( typeof Aloha.settings.baseUrl === "string" ) {
+				baseUrl = Aloha.settings.baseUrl;
+			}
+			
 			return baseUrl;
 		},
 
@@ -7064,7 +7146,6 @@ function ( jQuery, PluginManager ) {
 
 	return Aloha;
 });
-
 /*!
 * This file is part of Aloha Editor Project http://aloha-editor.org
 * Copyright Â© 2010-2011 Gentics Software GmbH, aloha@gentics.com
@@ -7535,7 +7616,6 @@ GENTICS.Utils.RangeObject = Class.extend({
 			// sometimes it's cached (or was set)
 			return this.commonAncestorContainer;
 		}
-
 		// if it's not cached, calculate and then cache it
 		this.updateCommonAncestorContainer();
 
@@ -7621,13 +7701,13 @@ GENTICS.Utils.RangeObject = Class.extend({
 	 * @hide
 	 */
 	updateCommonAncestorContainer: function(commonAncestorContainer) {
-		// this will be needed either right now for finding the CAC or later for the crossing index
-		var parentsStartContainer = this.getStartContainerParents(),
-			parentsEndContainer = this.getEndContainerParents(),
-			i;
-
 		// if no parameter was passed, calculate it
 		if (!commonAncestorContainer) {
+			// this will be needed either right now for finding the CAC or later for the crossing index
+			var parentsStartContainer = this.getStartContainerParents(),
+				parentsEndContainer = this.getEndContainerParents(),
+				i;
+
 			// find the crossing between startContainer and endContainer parents (=commonAncestorContainer)
 			if (!(parentsStartContainer.length > 0 && parentsEndContainer.length > 0)) {
 				console.warn('could not find commonAncestorContainer');
@@ -7808,6 +7888,7 @@ GENTICS.Utils.RangeObject = Class.extend({
 	 */
 	update: function(event) {
 		console.debug('now updating rangeObject');
+		
 		this.initializeFromUserSelection(event);
 		this.updateCommonAncestorContainer();
 	},
@@ -8383,8 +8464,7 @@ function(Aloha, jQuery, Ext, Class, console) {
 		getExtComponent: function () {
 			var that = this;
 
-			if (typeof this.extPanel === 'undefined') {
-				// generate the panel here
+			if (!this.extPanel) {
 				this.extPanel = new Ext.Panel({
 					'tbar' : [],
 					'title' : this.label,
@@ -8392,13 +8472,15 @@ function(Aloha, jQuery, Ext, Class, console) {
 					'bodyStyle': 'display:none',
 					'autoScroll': true
 				});
-
-				// add the groups
-				jQuery.each(this.groups, function(index, group) {
-					// let each group generate its ext component and add them to the panel
-					that.extPanel.getTopToolbar().add(group.getExtComponent());
-				});
 			}
+
+			jQuery.each(this.groups, function(index, group) {
+				// let each group generate its ext component and add them to
+				// the panel once.
+				if (!group.extButtonGroup) {
+					that.extPanel.getTopToolbar().add(group.getExtComponent());
+				}
+			});
 
 			return this.extPanel;
 		},
@@ -8511,6 +8593,7 @@ function(Aloha, jQuery, Ext, Class, console) {
 					'columns' : columnCount,
 					'items': items
 				});
+
 	//			jQuery.each(this.fields, function(id, field){
 	//				that.buttons.push(field);
 	//			});
@@ -8583,6 +8666,73 @@ function(Aloha, jQuery, Ext, Class, console) {
 
 		}
 	});
+
+	//=========================================================================
+	//
+	// Floating Menu
+	//
+	//=========================================================================
+
+	var lastFloatingMenuPos = {
+		top: null,
+		left: null
+	};
+
+	/**
+	 * Handler for window scroll event.  Positions the floating menu
+	 * appropriately.
+	 *
+	 * @param {Aloha.FloatingMenu} floatingmenu
+	 */
+	function onWindowScroll( floatingmenu ) {
+		if ( !Aloha.activeEditable ) {
+			return;
+		}
+
+		var element = floatingmenu.obj;
+		var editablePos = Aloha.activeEditable.obj.offset();
+		var isTopAligned = floatingmenu.behaviour === 'topalign';
+		var isAppended = floatingmenu.behaviour === 'append';
+		var isManuallyPinned = floatingmenu.pinned
+							 && ( parseInt( element.css( 'left' ), 10 )
+								  != ( editablePos.left
+									   + floatingmenu.horizontalOffset
+									 ) );
+
+		// no calculation when pinned manually or has behaviour 'append'
+		if ( isTopAligned && isManuallyPinned || isAppended ) {
+			return;
+		}
+
+		var floatingmenuHeight = element.height();
+		var scrollTop = jQuery( document ).scrollTop();
+
+		// This value is what the top position of the floating menu *would* be
+		// if we tried to position it above the active editable.
+		var floatingmenuTop = editablePos.top - floatingmenuHeight
+		                    + floatingmenu.marginTop
+		                    - floatingmenu.topalignOffset;
+
+		// The floating menu does not fit in the space between the top of the
+		// viewport and the editable, so position it at the top of the viewport
+		// and over the editable.
+		if ( scrollTop > floatingmenuTop ) {
+			editablePos.top = isTopAligned
+							? scrollTop + floatingmenu.marginTop
+							: floatingmenu.marginTop;
+
+		// There is enough space on top of the editable to fit the entire
+		// floating menu, so we do so.
+		} else if ( scrollTop <= floatingmenuTop ) {
+			editablePos.top -= floatingmenuHeight
+							 + ( isTopAligned
+								 ? floatingmenu.marginTop +
+								   floatingmenu.topalignOffset
+								 : 0 );
+		}
+
+		floatingmenu.floatTo( editablePos );
+	}
 
 	/**
 	 * Aloha's Floating Menu
@@ -8663,16 +8813,30 @@ function(Aloha, jQuery, Ext, Class, console) {
 		window: jQuery(window),
 
 		/**
-		 * define floating menu float behaviour. meant to be adjusted via
-		 * GENTICS.Aloha.settings.floatingmenu.behaviour
-		 * set it to 'float' for standard behaviour, or 'topalign' for a fixed fm 
+		 * Aloha.settings.floatingmenu.behaviour
+		 * 
+		 * Is used to define the floating menu (fm) float behaviour.
+		 *
+		 * available: 
+		 *  'float' (default) the fm will float next to the position where the caret is,
+		 *  'topalign' the fm is fixed above the contentEditable which is active,
+		 *  'append' the fm is appended to the defined 'element' element position (top/left)
 		 */
 		behaviour: 'float',
 
 		/**
+		 * Aloha.settings.floatingmenu.element
+		 *
+		 * Is used to define the element where the floating menu is positioned when
+		 * Aloha.settings.floatingmenu.behaviour is set to 'append'
+		 * 
+		 */
+		element: 'floatingmenu',
+
+		/**
 		 * topalign offset to be used for topalign behavior
 		 */
-		topalignOffset: 90,
+		topalignOffset: 0,
 		
 		/**
 		 * topalign offset to be used for topalign behavior
@@ -8683,13 +8847,19 @@ function(Aloha, jQuery, Ext, Class, console) {
 		 * will only be hounoured when behaviour is set to 'topalign'. Adds a margin,
 		 * so the floating menu is not directly attached to the top of the page
 		 */
-		marginTop: 0,
+		marginTop: 10,
 		
 		/**
 		 * Define whether the floating menu shall be draggable or not via Aloha.settings.floatingmanu.draggable
 		 * Default is: true 
 		 */
 		draggable: true,
+		
+		/**
+		 * Define whether the floating menu shall be pinned or not via Aloha.settings.floatingmanu.pin
+		 * Default is: false 
+		 */
+		pin: false,
 		
 		/**
 		 * A list of all buttons that have been added to the floatingmenu
@@ -8710,38 +8880,58 @@ function(Aloha, jQuery, Ext, Class, console) {
 		init: function() {
 
 			// check for behaviour setting of the floating menu
-		    if (Aloha.settings.floatingmenu) {
-		    	
-		    	if (typeof Aloha.settings.floatingmenu.draggable === 'boolean') {
+		    if ( Aloha.settings.floatingmenu ) {
+		    	if ( typeof Aloha.settings.floatingmenu.draggable ===
+				         'boolean' ) {
 		    		this.draggable = Aloha.settings.floatingmenu.draggable;
 		    	}
-				if (typeof Aloha.settings.floatingmenu.behaviour === 'string') {
+
+				if ( typeof Aloha.settings.floatingmenu.behaviour ===
+				         'string' ) {
 					this.behaviour = Aloha.settings.floatingmenu.behaviour;
 				}
-				if (typeof Aloha.settings.floatingmenu.topalignOffset !== 'undefined') {
-					this.topalignOffset = Aloha.settings.floatingmenu.topalignOffset;
+
+				if ( typeof Aloha.settings.floatingmenu.topalignOffset !==
+					    'undefined' ) {
+					this.topalignOffset = parseInt(
+						Aloha.settings.floatingmenu.topalignOffset, 10 );
 				}
-				if (typeof Aloha.settings.floatingmenu.horizontalOffset !== 'undefined') {
-					this.horizontalOffset = Aloha.settings.floatingmenu.horizontalOffset;
+
+				if ( typeof Aloha.settings.floatingmenu.horizontalOffset !==
+				         'undefined' ) {
+					this.horizontalOffset = parseInt(
+						Aloha.settings.floatingmenu.horizontalOffset , 10 );
 				}
-				if (typeof Aloha.settings.floatingmenu.marginTop === 'number') {
-				    this.marginTop = Aloha.settings.floatingmenu.marginTop;
+
+				if ( typeof Aloha.settings.floatingmenu.marginTop ===
+				         'number' ) {
+				    this.marginTop = parseInt(
+						Aloha.settings.floatingmenu.marginTop , 10 );
 				}
-				//We just check for undefined
-				if (typeof Aloha.settings.floatingmenu.width !== 'undefined') {
-					//Try to pars it
-					try {
-						var parsed = parseInt(Aloha.settings.floatingmenu.width);
-						this.width = Aloha.settings.floatingmenu.width;
-					} catch(e) {
-						//do nothing.
-					}
+
+				if ( typeof Aloha.settings.floatingmenu.element ===
+						'string' ) {
+					this.element = Aloha.settings.floatingmenu.element;
+				}
+				if ( typeof Aloha.settings.floatingmenu.pin ===
+						'boolean' ) {
+					this.pin = Aloha.settings.floatingmenu.pin;
+				}
+
+
+				if ( typeof Aloha.settings.floatingmenu.width !==
+				         'undefined' ) {
+					this.width = parseInt( Aloha.settings.floatingmenu.width,
+						10 );
 				}
 		    }
 
 			jQuery.storage = new jQuery.store();
+
 			this.currentScope = 'Aloha.global';
+
 			var that = this;
+
 			this.window.unload(function () {
 				// store fm position if the panel is pinned to be able to restore it next time
 				if (that.pinned) {
@@ -8781,7 +8971,7 @@ function(Aloha, jQuery, Ext, Class, console) {
 			});
 			
 			if (typeof Aloha.settings.toolbar === 'object') {
-				this.fromConfig = true;				
+				this.fromConfig = true;
 			}
 		},
 
@@ -8899,6 +9089,10 @@ function(Aloha, jQuery, Ext, Class, console) {
 							that.left = this.x;
 							that.top = top;
 
+							// store the last floating menu position when the floating menu was dragged around
+							lastFloatingMenuPos.left = that.left;
+							lastFloatingMenuPos.top = that.top;
+
 							this.panel.setPosition(this.x, top);
 							that.refreshShadow();
 							this.panel.shadow.show();
@@ -8949,8 +9143,10 @@ function(Aloha, jQuery, Ext, Class, console) {
 								});
 						
 								// adapt the shadow
-								that.extTabPanel.shadow.show();
-								that.refreshShadow();
+								if (that.extTabPanel.isVisible()) {
+									that.extTabPanel.shadow.show();
+									that.refreshShadow();
+								}
 							}
 						}
 					},
@@ -8959,6 +9155,7 @@ function(Aloha, jQuery, Ext, Class, console) {
 		
 		
 			}
+
 			// add the tabs
 			jQuery.each(this.tabs, function(index, tab) {
 				// let each tab generate its ext component and add them to the panel
@@ -8970,8 +9167,10 @@ function(Aloha, jQuery, Ext, Class, console) {
 			});
 
 			// add the dropshadow
-			this.extTabPanel.shadow = jQuery('<div id="aloha-floatingmenu-shadow" class="aloha-shadow">&#160;</div>');
-			jQuery('body').append(this.extTabPanel.shadow);
+			if (!this.extTabPanel.shadow) {
+				this.extTabPanel.shadow = jQuery('<div id="aloha-floatingmenu-shadow" class="aloha-shadow">&#160;</div>').hide();
+				jQuery('body').append(this.extTabPanel.shadow);
+			}
 
 			// add an empty pin tab item, store reference
 			pinTab = this.extTabPanel.add({
@@ -9005,7 +9204,7 @@ function(Aloha, jQuery, Ext, Class, console) {
 			this.obj = jQuery(this.extTabPanel.getEl().dom);
 
 			if (jQuery.storage.get('Aloha.FloatingMenu.pinned') == 'true') {
-				this.togglePin();
+				//this.togglePin();
 
 				this.top = parseInt(jQuery.storage.get('Aloha.FloatingMenu.top'),10);
 				this.left = parseInt(jQuery.storage.get('Aloha.FloatingMenu.left'),10);
@@ -9034,12 +9233,25 @@ function(Aloha, jQuery, Ext, Class, console) {
 			this.obj.mousedown(function (e) {
 				e.originalEvent.stopSelectionUpdate = true;
 				Aloha.eventHandled = true;
-		//		e.stopSelectionUpdate = true;
+				//e.stopSelectionUpdate = true;
 			});
+
 			this.obj.mouseup(function (e) {
 				e.originalEvent.stopSelectionUpdate = true;
 				Aloha.eventHandled = false;
 			});
+
+			jQuery( window ).scroll(function() {
+				onWindowScroll( that );
+			});
+
+			// don't display the drag handle bar / pin when floating menu is not draggable
+			if ( !that.draggable ) {
+				jQuery('.aloha-floatingmenu').hover( function() {
+					jQuery(this).css({background: 'none'});
+					jQuery('.aloha-floatingmenu-pin').hide();
+				});
+			}
 
 			// adjust float behaviour
 			if (this.behaviour === 'float') {
@@ -9052,56 +9264,85 @@ function(Aloha, jQuery, Ext, Class, console) {
 						}
 					}
 				});
-		    } else if (this.behaviour === 'topalign') {
+			} else if (this.behaviour === 'append' ) {
+				var p = jQuery( "#" + that.element );
+				var position = p.offset();
+
+				if ( !position ) {
+					Aloha.Log.warn(that, 'Invalid element HTML ID for floating menu: ' + that.element);
+					return false;
+				}
+
+				// set the position so that it does not float on the first editable activation
+				this.floatTo( position );
+				
+				if ( this.pin ) {
+					this.togglePin( true );
+				}
+
+				Aloha.bind( 'aloha-editable-activated', function( event, data ) {
+					if ( that.pinned ) {
+						return;
+					}
+					that.floatTo( position );
+				});
+				
+		    } else if ( this.behaviour === 'topalign' ) {
 				// topalign will retain the user's pinned status
 				// TODO maybe the pin should be hidden in that case?
-				this.togglePin(false);
+				this.togglePin( false );
 
-				// float the fm to each editable that is activated
-				Aloha.bind('aloha-editable-activated', function(event, data) {
-					var p = data.editable.obj.offset();
-					p.top -= that.topalignOffset;
-					p.left += that.horizontalOffset;
-			    if (p.top < jQuery(document).scrollTop()) {
-					// scrollpos is below top of editable
-					that.obj.css('top', jQuery(document).scrollTop() + that.marginTop);
-					that.obj.css('left', p.left);
-					that.togglePin(true);
-			    } else {
-					// scroll pos is above top of editable
-					that.floatTo(p);
-			    }
-			});
-
-				// fm scroll behaviour
-			jQuery(window).scroll(function () {
-			    if (!Aloha.activeEditable) {
-					return;
-			    }
-			    var pos = Aloha.activeEditable.obj.offset(),
-					fmHeight = that.obj.height(),
-					scrollTop = jQuery(document).scrollTop();
-
-				if (scrollTop > (pos.top - fmHeight - 6 - that.marginTop)) {
-					// scroll pos is lower than top of editable
-					that.togglePin(true);
-					that.obj.css('top', that.marginTop);
-			    } else if (scrollTop <= (pos.top - fmHeight - 6 - that.marginTop)) {
-					// scroll pos is above top of editable
-					if (that.behaviour === 'topalign') {
-						pos.top = Aloha.activeEditable.obj.offset().top - that.topalignOffset;
-						pos.left = Aloha.activeEditable.obj.offset().left + that.horizontalOffset;
-					} else {
-						pos.top -= fmHeight + 6;
+				// Float the menu to the editable that is activated.
+				Aloha.bind( 'aloha-editable-activated', function( event, data ) {
+					if ( that.pinned ) {
+						return;
 					}
-					that.togglePin(false);
-					that.floatTo(pos);
-			    } else if (scrollTop > pos.top + Aloha.activeEditable.obj.height() - fmHeight) {
-					// scroll pos is below editable
-					that.togglePin(false);
-			    }
-			});
-		    }
+
+					// FIXME: that.obj.height() does not return the correct
+					//        height of the editable.  We need to fix this, and
+					//        not hard-code the height as we currently do.
+					var editable = data.editable.obj;
+					var floatingmenuHeight = 90;
+					var editablePos = editable.offset();
+					var isFloatingmenuAboveViewport = ( (
+						editablePos.top - floatingmenuHeight )
+						    < jQuery( document ).scrollTop() );
+
+					if ( isFloatingmenuAboveViewport ) {
+						// Since we don't have space to place the floatingmenu
+						// above the editable, we want to place it over the
+						// editable instead.  But if the editable is shorter
+						// than the floatingmenu, it would be completely
+						// covered by it, and so, in such cases, we position
+						// the editable at the bottom of the short editable.
+						editablePos.top = ( editable.height()
+						         < floatingmenuHeight )
+							? editablePos.top + editable.height()
+							: jQuery( document ).scrollTop();
+
+						editablePos.top += that.marginTop;
+					} else {
+						editablePos.top -= floatingmenuHeight
+						                 + that.topalignOffset;
+					}
+
+					editablePos.left += that.horizontalOffset;
+
+					var HORIZONTAL_PADDING = 10;
+					// Calculate by how much the floating menu is pocking
+					// outside the width of the viewport.  A positive number
+					// means that it is outside the viewport, negative means
+					// it is within the viewport.
+					var overhang = ( ( editablePos.left + that.width
+						+ HORIZONTAL_PADDING ) - jQuery(window).width() );
+
+					if ( overhang > 0 ) {
+						editablePos.left -= overhang;	
+					}
+
+					that.floatTo( editablePos );
+				});
+			}
 		},
 
 		/**
@@ -9278,6 +9519,11 @@ function(Aloha, jQuery, Ext, Class, console) {
 		doLayout: function () {
 			if (Aloha.Log.isDebugEnabled()) {
 				Aloha.Log.debug(this, 'doLayout called for FloatingMenu, scope is ' + this.currentScope);
+			}
+
+			// if there's no floatingmenu don't do anything
+			if ( typeof this.extTabPanel === 'undefined' ) {
+				return false;
 			}
 
 			var that = this,
@@ -9505,7 +9751,10 @@ function(Aloha, jQuery, Ext, Class, console) {
 
 			// if the floating menu would be placed higher than the top of the screen...
 			if ( top < scrollTop) {
-				top += 50 + GENTICS.Utils.Position.ScrollCorrection.top;
+				top += 80 + GENTICS.Utils.Position.ScrollCorrection.top;
+				// 80px if editable element is eg h1; 50px was fine for p;
+				// todo: maybe just use GENTICS.Utils.Position.ScrollCorrection.top with a better value?
+				// check where this is also used ...
 			}
 
 			// if the floating menu would float off the bottom of the screen
@@ -9539,24 +9788,47 @@ function(Aloha, jQuery, Ext, Class, console) {
 				return;
 			}
 
-			var that = this,
-			    fmpos = this.obj.offset();
+			var floatingmenu = this,
+			    fmpos = this.obj.offset(),
+				lastLeft,
+				lastTop;
+			
+			if ( lastFloatingMenuPos.left === null ) {
+				lastLeft = fmpos.left;
+				lastTop = fmpos.top;
+			} else {
+				lastLeft = lastFloatingMenuPos.left;
+				lastTop = lastFloatingMenuPos.top;
+			}
 
-			// move to the new position
-			if (fmpos.left != position.left || fmpos.top != position.top) {
-				this.obj.animate({
-					top:  position.top,
+			// Place the floatingmenu to the last place the user had seen it,
+			// then animate it into its new position.
+			if ( lastLeft != position.left || lastTop != position.top ) {
+				this.obj.offset({
+					left: lastLeft,
+					top: lastTop
+				});
+
+				this.obj.animate( {
+					top: position.top,
 					left: position.left
 				}, {
 					queue : false,
-					step : function (step, props) {
+					step : function( step, props ) {
 						// update position reference
-						if (props.prop == 'top') {
-							that.top = props.now;
-						} else if (props.prop == 'left') {
-							that.left = props.now;
+						if ( props.prop === 'top' ) {
+							floatingmenu.top = props.now;
+						} else if ( props.prop === 'left' ) {
+							floatingmenu.left = props.now;
 						}
-						that.refreshShadow(false);
+
+						floatingmenu.refreshShadow( false );
+					},
+					complete: function() {
+						// When the animation is over, remember the floatingmenu's
+						// final resting position.
+						lastFloatingMenuPos.left = floatingmenu.left;
+						lastFloatingMenuPos.top = floatingmenu.top;
 					}
 				});
 			}
@@ -9621,6 +9893,7 @@ function(Aloha, jQuery, Ext, Class, console) {
 	
 	return menu;
 });
+
 
 /*!
 * This file is part of Aloha Editor Project http://aloha-editor.org
@@ -9975,8 +10248,18 @@ function(Aloha, jQuery, FloatingMenu, Class, Range) {
 					// the start of the selection was not yet found, so look for it now
 					// check whether the start of the selection is found here
 
+					// Try to read the nodeType property and return if we do not have permission
+					// ie.: frame document to an external URL
+					var nodeType;
+					try {
+						nodeType = this.nodeType;
+					}
+					catch (e) {
+						return;
+					}
+
 					// check is dependent on the node type
-					switch(this.nodeType) {
+					switch(nodeType) {
 					case 3: // text node
 						if (this === rangeObject.startContainer) {
 							// the selection starts here
@@ -10226,8 +10509,17 @@ function(Aloha, jQuery, FloatingMenu, Class, Range) {
 		standardAttributesComparator: function(domobj, markupObject) {
 			var i, attr, classString, classes, classes2, classLength, attrLength, domAttrLength;
 
+			// Cloning the domobj works around an IE7 bug that crashes
+			// the browser. The exact place where IE7 crashes is when
+			// the domobj.attribute[i] is read below.
+			// The bug can be reproduced with an editable that contains
+			// some text and and image, by clicking inside and outside the
+			// editable a few times.
+			domobj = domobj.cloneNode(false);
+
 			if (domobj.attributes && domobj.attributes.length && domobj.attributes.length > 0) {
 				for (i = 0, domAttrLength = domobj.attributes.length; i < domAttrLength; i++) {
+					// Dereferencing attributes[i] here would crash IE7 if domobj were not cloned above
 					attr = domobj.attributes[i];
 					if (attr.nodeName.toLowerCase() == 'class' && attr.nodeValue.length > 0) {
 						classString = attr.nodeValue;
@@ -11725,11 +12017,223 @@ function correctRange ( range ) {
 * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-define('aloha/markup',[ 'aloha/core', 'util/class', 'aloha/jquery' ],
-function( Aloha, Class, jQuery ) {
+define('aloha/markup',[
+	'aloha/core',
+	'util/class',
+	'aloha/jquery',
+	'aloha/ecma5shims'
+],
+function( Aloha, Class, jQuery, shims ) {
+
 
 
 var GENTICS = window.GENTICS;
+
+var isOldIE = !!( jQuery.browser.msie &&
+				  9 > parseInt( jQuery.browser.version, 10 ) );
+
+function isBR( node ) {
+	return 'BR' === node.nodeName;
+}
+
+function isBlock( node ) {
+	return 'false' === jQuery( node ).attr( 'contenteditable' );
+}
+
+function isTextNode( node ) {
+	return node && 3 === node.nodeType; // Node.TEXT_NODE
+}
+
+function nodeLength( node ) {
+	return !node ? 0
+				 : ( isTextNode( node ) ? node.length
+										: node.childNodes.length );
+}
+
+function nextVisibleNode( node ) {
+	if ( !node ) {
+		return null;
+	}
+
+	if ( node.nextSibling ) {
+		// Skip over nodes that the user cannot see ...
+		if ( isTextNode( node.nextSibling ) &&
+			 !isVisibleTextNode( node.nextSibling ) ) {
+			return nextVisibleNode( node.nextSibling );
+		}
+
+		// Skip over propping <br>s ...
+		if ( isBR( node.nextSibling ) &&
+			 node.nextSibling === node.parentNode.lastChild ) {
+			return nextVisibleNode( node.nextSibling );	
+		}
+
+		// Skip over empty editable elements ...
+		if ( '' === node.nextSibling.innerHTML &&
+		     !isBlock( node.nextSibling ) ) {
+			return nextVisibleNode( node.nextSibling );
+		}
+
+		return node.nextSibling;
+	}
+
+	if ( node.parentNode ) {
+		return nextVisibleNode( node.parentNode );
+	}
+
+	return null;
+}
+
+function prevVisibleNode( node ) {
+	if ( !node ) {
+		return null;
+	}
+
+	if ( node.previousSibling ) {
+		// Skip over nodes that the user cannot see...
+		if ( isTextNode( node.previousSibling ) &&
+			 !isVisibleTextNode( node.previousSibling ) ) {
+			return prevVisibleNode( node.previousSibling );
+		}
+
+		// Skip over empty editable elements ...
+		if ( '' === node.previousSibling.innerHTML &&
+		     !isBlock( node.previousSibling ) ) {
+			return prevVisibleNode( node.previouSibling );
+		}
+
+		return node.previousSibling;
+	}
+
+	if ( node.parentNode ) {
+		return prevVisibleNode( node.parentNode );
+	}
+
+	return null;
+}
+
+/**
+ * Determines whether the given text node is visible to the the user,
+ * based on our understanding that browsers will not display
+ * superfluous white spaces.
+ *
+ * @param {HTMLEmenent} node The text node to be checked.
+ */
+function isVisibleTextNode( node ) {
+	return 0 < node.data.replace( /\s+/g, '' ).length;
+}
+
+function isFrontPosition( node, offset ) {
+	return ( 0 === offset ) ||
+		   ( offset <= node.data.length -
+					   node.data.replace( /^\s+/, '' ).length );
+}
+
+function isBlockInsideEditable( $block ) {
+	return $block.parent().hasClass( 'aloha-editable' );
+}
+
+function isEndPosition( node, offset ) {
+	var length = nodeLength( node );
+
+	if ( length === offset ) {
+		return true;
+	}
+
+	var isText = isTextNode( node );
+
+	// If within a text node, then ignore superfluous white-spaces,
+	// since they are invisible to the user.
+	if ( isText &&
+		 node.data.replace( /\s+$/, '' ).length === offset ) {
+		return true;
+	}
+
+	if ( 1 === length && !isText ) {
+		return isBR( node.childNodes[0] );
+	}
+
+	return false;
+}
+
+function blink( node ) {
+	jQuery( node )
+		.stop( true )
+		.css({ opacity: 0 })
+		.fadeIn( 0 ).delay( 100 )
+		.fadeIn(function () {
+			jQuery( node ).css({ opacity: 1 });
+		});
+
+	return node;
+}
+
+/**
+ * @TODO(petro): We need to be more intelligent about whether we insert a
+ *               block-level placeholder or a phrasing level element.
+ * @TODO(petro): test with <pre>
+ */
+function jumpBlock( block, isGoingLeft ) {
+	var range = new GENTICS.Utils.RangeObject();
+	var sibling = isGoingLeft ? prevVisibleNode( block )
+	                          : nextVisibleNode( block );
+
+	if ( !sibling || isBlock( sibling ) ) {
+		var $landing = jQuery( '<div>&nbsp;</div>' );
+
+		if ( isGoingLeft ) {
+			jQuery( block ).before( $landing );
+		} else {
+			jQuery( block ).after( $landing );
+		}
+
+		range.startContainer = range.endContainer = $landing[0];
+		range.startOffset = range.endOffset = 0;
+
+		// Clear out any old placeholder first ...
+		cleanupPlaceholders( range );
+
+		window.$_alohaPlaceholder = $landing;
+	} else {
+		range.startContainer = range.endContainer = sibling;
+		range.startOffset = range.endOffset = isGoingLeft ?
+			nodeLength( sibling ) : ( isOldIE ? 1 : 0 );
+
+		cleanupPlaceholders( range );
+	}
+
+	range.select();
+
+	Aloha.trigger( 'aloha-block-selected', block );
+	Aloha.Selection.preventSelectionChanged();
+}
+
+function nodeContains( node1, node2 ) {
+	return isOldIE ? ( shims.compareDocumentPosition( node1, node2 ) & 16 )
+	               : 0 < jQuery( node1 ).find( node2 ).length;
+}
+
+function isInsidePlaceholder( range ) {
+	var start = range.startContainer;
+	var end = range.endContainer;
+	var $placeholder = window.$_alohaPlaceholder;
+
+	return $placeholder.is( start )               ||
+	       $placeholder.is( end )                 ||
+	       nodeContains( $placeholder[0], start ) ||
+	       nodeContains( $placeholder[0], end );
+}
+
+function cleanupPlaceholders( range ) {
+	if ( window.$_alohaPlaceholder && !isInsidePlaceholder( range ) ) {
+		if ( 0 === window.$_alohaPlaceholder.html()
+		                 .replace( /^(&nbsp;)*$/, '' ).length ) {
+			window.$_alohaPlaceholder.remove();
+		}
+
+		window.$_alohaPlaceholder = null;
+	}
+}
 
 /**
  * Markup object
@@ -11812,9 +12316,14 @@ Aloha.Markup = Class.extend( {
 			}
 		}
 
-		// handle left (37) and right (39) keys for block detection
+		// LEFT (37), RIGHT (39) keys for block detection
 		if ( event.keyCode === 37 || event.keyCode === 39 ) {
-			return this.processCursor( rangeObject, event.keyCode );
+			if ( this.processCursor( rangeObject, event.keyCode ) ) {
+				cleanupPlaceholders( Aloha.Selection.rangeObject );
+				return true;
+			}
+
+			return false;
 		}
 
 		// BACKSPACE
@@ -11845,55 +12354,117 @@ Aloha.Markup = Class.extend( {
 	},
 
 	/**
-	 * Processing of cursor keys
-	 * will currently detect blocks (elements with contenteditable=false)
-	 * and selects them (normally the cursor would jump right past them)
+	 * Processing of cursor keys.
+	 * Detect blocks (elements with contenteditable=false) and will select them
+	 * (normally the cursor would simply jump right past them).
 	 *
-	 * For each block an 'aloha-block-selected' event will be triggered.
+	 * For each block that is selected, an 'aloha-block-selected' event will be
+	 * triggered.
 	 *
-	 * @param range the current range object
-	 * @param keyCode keyCode of current keypress
-	 * @return false if a block was found to prevent further events, true otherwise
+	 * @param {RangyRange} range A range object for the current selection.
+	 * @param {number} keyCode Code of the currently pressed key.
+	 * @return {boolean} False if a block was found, to prevent further events,
+	 *                   true otherwise.
 	 */
 	processCursor: function( range, keyCode ) {
-		var rt = range.getRangeTree(), // RangeTree reference
-		    i = 0,
-		    cursorLeft = keyCode === 37,
-		    cursorRight = keyCode === 39,
-		    nextSiblingIsBlock = false, // check whether the next sibling is a block (contenteditable = false)
-		    cursorIsWithinBlock = false, // check whether the cursor is positioned within a block (contenteditable = false)
-		    cursorAtLastPos = false, // check if the cursor is within the last position of the currently active dom element
-		    obj; // will contain references to dom objects
-
 		if ( !range.isCollapsed() ) {
 			return true;
 		}
 
-		for ( ;i < rt.length; ++i ) {
-			if ( typeof rt[i].domobj === 'undefined'
-				 || range.startOffset === rt[i].domobj.length ) {
-				continue;
-			}
+		var node = range.startContainer;
 
-			nextSiblingIsBlock = jQuery( rt[i].domobj.nextSibling ).attr( 'contenteditable' ) === 'false';
-			cursorIsWithinBlock = jQuery( rt[i].domobj ).parents( '[contenteditable=false]' ).length > 0;
+		if ( !node ) {
+			return true;
+		}
 
-			if ( cursorRight && nextSiblingIsBlock ) {
-				obj = rt[i].domobj.nextSibling;
-				GENTICS.Utils.Dom.selectDomNode( obj );
-				Aloha.trigger( 'aloha-block-selected', obj );
-				Aloha.Selection.preventSelectionChanged();
-				return false;
-			}
+		var sibling;
 
-			if ( cursorLeft && cursorIsWithinBlock ) {
-				obj = jQuery( rt[i].domobj ).parents( '[contenteditable=false]' ).get( 0 );
-				GENTICS.Utils.Dom.selectDomNode( obj );
-				Aloha.trigger( 'aloha-block-selected', obj );
-				Aloha.Selection.preventSelectionChanged();
-				return false;
+		// Versions of Internet Explorer that are older that 9, will
+		// erroneously allow you to enter and edit inside elements which have
+		// their contenteditable attribute set to false...
+		if ( isOldIE ) {
+			var $parentBlock = jQuery( node ).parents(
+				'[contenteditable=false]' );
+			var isInsideBlock = $parentBlock.length > 0;
+
+			if ( isInsideBlock ) {
+				if ( isBlockInsideEditable( $parentBlock ) ) {
+					sibling = $parentBlock[0];
+				} else {
+					return true;
+				}
 			}
 		}
+		
+		if ( !sibling ) {
+			// True if keyCode denotes LEFT or UP arrow key, otherwise they
+			// keyCode is for RIGHT or DOWN in which this value will be false.
+			var isLeft = (37 === keyCode || 38 === keyCode);
+			var offset = range.startOffset;
+
+			if ( isTextNode( node ) ) {
+				if ( isLeft ) {
+					// FIXME(Petro): Please consider if you have a better idea
+					//               of how we can work around this.
+					//
+					// Here is the problem... with Internet Explorer:
+					// ----------------------------------------------
+					//
+					// Versions of Internet Explorer older than 9, are buggy in
+					// how they `select()', or position a selection from cursor
+					// movements, when the following conditions are true:
+					//
+					//  * The range is collapsed.
+					//  * startContainer is a contenteditable text node.
+					//  * startOffset is 1.
+					//  * There is a non-conenteditable element left of the
+					//    startContainer.
+					//  * You attempt to move left to offset 0 (we consider a
+					//    range to be at "frontposition" if it is at offset 0
+					//    within its startContainer).
+					//
+					// What happens in IE 7, and IE 8, is that the selection
+					// will jump to the adjacent non-contenteditable
+					// element(s), instead moving to the front of the
+					// container, and the offset will be stuck at 1--even as
+					// the cursor is jumping around the screen!
+					//
+					// Our imperfect work-around is to reckon ourselves to be
+					// at the front of the next node (ie: offset 0 in other
+					// browsers), as soon as we detect that we are at offset 1
+					// in IEv<9.
+					//
+					// Considering the bug, I think this is acceptable because
+					// the user can still position themselve right between the
+					// block (non-contenteditable element) and the first
+					// characater of the text node by clicking there with the
+					// mouse, since this seems to work fine in all IE versions.
+					var isFrontPositionInIE = isOldIE && 1 === offset;
+
+					if ( !isFrontPositionInIE &&
+						 !isFrontPosition( node, offset ) ) {
+						return true;
+					}
+
+				} else if ( !isEndPosition( node, offset ) ) {
+					return true;
+				}
+
+			} else {
+				node = node.childNodes[
+					offset === nodeLength( node ) ? offset - 1 : offset ];
+			}
+
+			sibling = isLeft ? prevVisibleNode( node )
+			                 : nextVisibleNode( node );
+		}
+
+		if ( isBlock( sibling ) ) {
+			jumpBlock( sibling, isLeft );
+			return false;
+		}
+
+		return true;
 	},
 
 	/**
@@ -12963,6 +13534,12 @@ define('aloha/editable',[
 		Aloha.settings.contentHandler = {};
 	}
 
+	var defaultContentSerializer = function(editableElement){
+		return jQuery(editableElement).html();
+	};
+
+	var contentSerializer = defaultContentSerializer;
+
 	/**
 	 * Editable object
 	 * @namespace Aloha
@@ -12987,8 +13564,9 @@ define('aloha/editable',[
 
 			// delimiters, timer and idle for smartContentChange
 			// smartContentChange triggers -- tab: '\u0009' - space: '\u0020' - enter: 'Enter'
+			// backspace: U+0008 - delete: U+007F
 			this.sccDelimiters = [ ':', ';', '.', '!', '?', ',',
-				unescape( '%u0009' ), unescape( '%u0020' ), 'Enter' ];
+				unescape( '%u0009' ), unescape( '%u0020' ), unescape( '%u0008' ), unescape( '%u007F' ), 'Enter' ];
 			this.sccIdle = 5000;
 			this.sccDelay = 500;
 			this.sccTimerIdle = false;
@@ -13111,8 +13689,13 @@ define('aloha/editable',[
 				// if it does not handle the keyStroke it returns true and therefore all other
 				// events (incl. browser's) continue
 				me.obj.keydown( function( event ) {
+					var letEventPass = Markup.preProcessKeyStrokes( event );
 					me.keyCode = event.which;
-					return Markup.preProcessKeyStrokes( event );
+					if (!letEventPass) {
+						// the event will not proceed to key press, therefore trigger smartContentChange
+						me.smartContentChange( event );
+					}
+					return letEventPass;
 				} );
 
 				// handle keypress
@@ -13599,19 +14182,32 @@ define('aloha/editable',[
 			this.removePlaceholder( clonedObj );
 			PluginManager.makeClean( clonedObj );
 
-			/*
-			//also deactivated for now. like initEditable. just in case ...
-			var content = clonedObj.html()
-			if ( typeof Aloha.settings.contentHandler.getContents === 'undefined' ) {
-				Aloha.settings.contentHandler.getContents = Aloha.defaults.contentHandler.getContents;
-			}
-			content = ContentHandlerManager.handleContent( content, {
-				contenthandler: Aloha.settings.contentHandler.getContents
-			} );
-			clonedObj.html( content );
-			*/
+			return asObject ? clonedObj.contents() : contentSerializer(clonedObj[0]);
+		},
 
-			return asObject ? clonedObj.contents() : clonedObj.html();
+		/**
+		 * Set the contents of this editable as a HTML string
+		 * @param content as html
+		 * @param return as object or html string
+		 * @return contents of the editable
+		 */
+		setContents: function( content, asObject ) {
+			var reactivate = null;
+
+			if ( Aloha.getActiveEditable() === this ) {
+				Aloha.deactivateEditable();
+				reactivate = this;
+			}
+
+			this.obj.html( content );
+
+			if ( null !== reactivate ) {
+				reactivate.activate();
+			}
+
+			this.smartContentChange({type : 'set-contents'});
+
+			return asObject ? this.obj.contents() : contentSerializer(this.obj[0]);
 		},
 
 		/**
@@ -13760,8 +14356,26 @@ define('aloha/editable',[
 			this.snapshotContent = this.getContents();
 			return ret;
 		}
-
 	} );
+
+	/**
+	 * Sets the serializer function to be used for the contents of all editables.
+	 *
+	 * The default content serializer will just call the jQuery.html()
+	 * function on the editable element (which gets the innerHTML property).
+	 *
+	 * This method is a static class method and will affect the result
+	 * of editable.getContents() for all editables that have been or
+	 * will be constructed.
+	 *
+	 * @param serializerFunction
+	 *        A function that accepts a DOM element and returns the serialized
+	 *        XHTML of the element contents (excluding the start and end tag of
+	 *        the passed element).
+	 */
+	Aloha.Editable.setContentSerializer = function( serializerFunction ) {
+		contentSerializer = serializerFunction;
+	};
 } );
 
 /*!
@@ -20407,6 +21021,7 @@ commands["delete"] = {
 
 		// collapse whitespace sequences
 		collapseWhitespace(node, range);
+		offset = range.startOffset;
 
 		// "If node is a Text node and offset is not zero, call collapse(node,
 		// offset) on the Selection. Then delete the contents of the range with
@@ -21000,6 +21615,7 @@ commands.forwarddelete = {
 
 		// collapse whitespace in the node, if it is a text node
 		collapseWhitespace(node, range);
+		offset = range.startOffset;
 
 		// "If node is a Text node and offset is not node's length:"
 		if (node.nodeType == $_.Node.TEXT_NODE
@@ -21796,11 +22412,13 @@ commands.insertparagraph = {
 		// container name) on the context object."
 		var newContainer = document.createElement(newContainerName);
 
-		// "Copy all attributes of container to new container."
-		for (var i = 0; i < container.attributes.length; i++) {
-			if (typeof newContainer.setAttributeNS === 'function') {
+		// "Copy all non empty attributes of the container to new container."
+		for ( var i = 0; i < container.attributes.length; i++ ) {
+			if ( typeof newContainer.setAttributeNS === 'function' ) {
 				newContainer.setAttributeNS(container.attributes[i].namespaceURI, container.attributes[i].name, container.attributes[i].value);
-			} else {
+			} else if ( container.attributes[i].value.length > 0 
+						&& container.attributes[i].value != 'null'
+						&& container.attributes[i].value > 0) {
 				newContainer.setAttribute(container.attributes[i].name, container.attributes[i].value);
 			}
 		}
@@ -22459,7 +23077,6 @@ return {
 }
 }); // end define
 // vim: foldmarker=@{,@} foldmethod=marker
-
 /*!
 * CommandManager file is part of Aloha Editor Project http://aloha-editor.org
 * Copyright (c) 2010-2011 Gentics Software GmbH, aloha@gentics.com
@@ -22548,19 +23165,22 @@ function( Aloha, Registry, Engine, Dom, ContentHandlerManager ) {
 			}
 
 			Engine.execCommand( commandId, showUi, value, range );
-			
-			// Read range after engine modification
-			range = Aloha.getSelection().getRangeAt( 0 );
 
-			// FIX: doCleanup should work with W3C range
-			var startnode = range.commonAncestorContainer.parentNode;
-			var rangeObject = new window.GENTICS.Utils.RangeObject();
-			rangeObject.startContainer = range.startContainer;
-			rangeObject.startOffset = range.startOffset;
-			rangeObject.endContainer = range.endContainer;
-			rangeObject.endOffset = range.endOffset;
-			Dom.doCleanup({merge:true, removeempty: false}, rangeObject, startnode);
-			rangeObject.select();
+			if ( Aloha.getSelection().getRangeCount() ) {
+				// Read range after engine modification
+				range = Aloha.getSelection().getRangeAt( 0 );
+
+				// FIX: doCleanup should work with W3C range
+				var startnode = range.commonAncestorContainer.parentNode;
+				var rangeObject = new window.GENTICS.Utils.RangeObject();
+				rangeObject.startContainer = range.startContainer;
+				rangeObject.startOffset = range.startOffset;
+				rangeObject.endContainer = range.endContainer;
+				rangeObject.endOffset = range.endOffset;
+				Dom.doCleanup({merge:true, removeempty: false}, rangeObject, startnode);
+				rangeObject.select();
+			}
+
 			Aloha.trigger('aloha-command-executed', commandId);
 		},
 		
@@ -23333,6 +23953,7 @@ define('aloha/sidebar',[
 				sidebar.init( opts );
 			}
 		} );
+		
 	};
 	
 	// ------------------------------------------------------------------------
@@ -23595,7 +24216,16 @@ define('aloha/sidebar',[
 			if (this.opened) {
 				this.rotateHandleArrow(isRight ? 0 : 180, 0);
 			}
-			
+
+			// configure the position of the sidebar handle
+			jQuery( function () {
+				if ( typeof Aloha.settings.sidebar != 'undefined' &&
+						Aloha.settings.sidebar.handle &&
+						Aloha.settings.sidebar.handle.top ) {
+					jQuery(bar.find(nsSel('handle'))).get(0).style.top = Aloha.settings.sidebar.handle.top;
+				}
+			} );
+
 			bar.find(nsSel('handle'))
 				.click(function () {
 					if (bounceTimer) {
@@ -24476,6 +25106,7 @@ define('aloha/repositorymanager',[
 	Aloha.RepositoryManager = Class.extend( {
 
 		repositories  : [],
+		settings: {},
 
 		/**
 		 * Initialize all registered repositories
@@ -24492,15 +25123,15 @@ define('aloha/repositorymanager',[
 			var repositories = this.repositories,
 			    i = 0,
 			    j = repositories.length,
-			    repository,
-			    settings;
+			    repository;
 
 			if ( Aloha.settings && Aloha.settings.repositories ) {
-				settings = Aloha.settings.repositories;
-			} else {
-				settings = {};
+				this.settings = Aloha.settings.repositories;
 			}
-
+			
+			// use the configured repository manger query timeout or 5 sec
+			this.settings.timeout = this.settings.timeout || 5000;
+			
 			for ( ; i < j; ++i ) {
 				repository = repositories[ i ];
 
@@ -24508,10 +25139,10 @@ define('aloha/repositorymanager',[
 					repository.settings = {};
 				}
 
-				if ( settings[ repository.repositoryId ] ) {
+				if ( this.settings[ repository.repositoryId ] ) {
 					jQuery.extend(
 						repository.settings,
-						settings[ repository.repositoryId ]
+						this.settings[ repository.repositoryId ]
 					);
 				}
 
@@ -24682,7 +25313,7 @@ define('aloha/repositorymanager',[
 			// respond. 5 seconds is deemed to be the reasonable time to wait
 			// when querying the repository manager in the context of something
 			// like autocomplete
-			var timeout = parseInt( params.timeout, 10 ) || 5000;
+			var timeout = parseInt( params.timeout, 10 ) || this.settings.timeout;
 			timer = setTimeout( function() {
 				numOpenCallbacks = 0;
 				that.queryCallback( callback, allitems, allmetainfo, timer );
@@ -24846,7 +25477,7 @@ define('aloha/repositorymanager',[
 				repositories = this.repositories;
 			}
 
-			var timeout = parseInt( params.timeout, 10 ) || 5000;
+			var timeout = parseInt( params.timeout, 10 ) || this.settings.timeout;
 			timer = setTimeout( function() {
 				numOpenCallbacks = 0;
 				that.getChildrenCallback( callback, allitems, timer );
@@ -27598,6 +28229,7 @@ require(
 	[
 		'aloha/jquery',
 		'aloha/ext',
+		'util/json2',
 	],
 	function () {
 		// load Aloha core files
@@ -27607,7 +28239,6 @@ require(
 				'vendor/jquery.json-2.2.min',
 				'vendor/jquery.store',
 				'aloha/rangy-core',
-				'util/json2',
 				'util/class',
 				'util/lang',
 				'util/range',

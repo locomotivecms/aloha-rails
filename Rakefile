@@ -44,7 +44,7 @@ task :extract do
 
     `rm -rf vendor/assets/javascripts/aloha`
     `mkdir -p vendor/assets/javascripts/aloha`
-    `mv tmp/aloha /vendor/assets/javascripts/.`
+    `mv tmp/aloha vendor/assets/javascripts/.`
   end
 end
 
