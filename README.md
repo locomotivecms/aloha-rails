@@ -1,7 +1,7 @@
-Rails 3.1 Integration for Aloha Editor
+Rails 3.2 Integration for Aloha Editor
 =================================
 
-The `aloha-rails` gem integrates the [AlohaEditor](http://aloha-editor.org/) editor with the Rails 3.1 asset pipeline.
+The `aloha-rails` gem integrates the [AlohaEditor](http://aloha-editor.org/) editor with the Rails 3.2 asset pipeline.
 
 
 Instructions
@@ -9,7 +9,7 @@ Instructions
 
 **1. Add `aloha-rails` to your Gemfile**
 
-    gem 'aloha-rails'
+    gem 'locomotive-aloha-rails'
 
 Then run `bundle install`.
 
@@ -45,4 +45,4 @@ Contact
 
 Feel free to contact me at didier at nocoffee dot fr.
 
-Copyright (c) 2012 NoCoffee
+Copyright (c) 2013 NoCoffee
