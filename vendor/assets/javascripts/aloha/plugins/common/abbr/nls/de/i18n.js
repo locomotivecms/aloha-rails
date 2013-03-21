@@ -1,1 +1,6 @@
-define({"floatingmenu.tab.abbr":"Abk\u00fcrzung","button.addabbr.tooltip":"Abk\u00fcrzung einf\u00fcgen","button.abbr.tooltip":"Als Abk\u00fcrzung formatieren","newabbr.defaulttext":"Abb"});
+define({
+	"floatingmenu.tab.abbr": "AbkÃ¼rzung",
+	"button.addabbr.tooltip": "AbkÃ¼rzung einfÃ¼gen",
+	"button.abbr.tooltip": "Als AbkÃ¼rzung formatieren",
+	"newabbr.defaulttext": "Abb"
+});

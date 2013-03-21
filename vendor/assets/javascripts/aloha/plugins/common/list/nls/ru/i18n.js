@@ -1,1 +1,7 @@
-define({"button.createulist.tooltip":"\u0412\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u0421\u043f\u0438\u0441\u043e\u043a","button.createolist.tooltip":"\u0412\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u0423\u043f\u043e\u0440\u044f\u0434\u043e\u0447\u0435\u043d\u043d\u044b\u0439 \u0421\u043f\u0438\u0441\u043e\u043a"});
+define({
+	"button.createulist.tooltip": "ÐÑÑÐ°Ð²Ð¸ÑÑ Ð¡Ð¿Ð¸ÑÐ¾Ðº",
+	"button.createolist.tooltip": "ÐÑÑÐ°Ð²Ð¸ÑÑ Ð£Ð¿Ð¾ÑÑÐ´Ð¾ÑÐµÐ½Ð½ÑÐ¹ Ð¡Ð¿Ð¸ÑÐ¾Ðº",
+	"button.indentlist.tooltip": "Ð¡Ð¿Ð¸ÑÐ¾Ðº Ñ Ð¾ÑÑÑÑÐ¿Ð¾Ð¼",
+	"button.outdentlist.tooltip": "Ð¡Ð¿Ð¸ÑÐ¾Ðº Ñ Ð½Ð°ÑÑÑÐ¿Ð¾Ð¼",
+	"floatingmenu.tab.list": "Ð¡Ð¿Ð¸ÑÐºÐ¸"
+});

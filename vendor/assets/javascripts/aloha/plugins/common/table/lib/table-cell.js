@@ -1,5 +1,6 @@
 define(
-['aloha/jquery', 'table/table-plugin-utils'],
+['jquery', 'table/table-plugin-utils'],
+
 function (jQuery, Utils) {
 	/**
 	 * Constructs a TableCell.
@@ -10,19 +11,19 @@ function (jQuery, Utils) {
 	 *        The Table which contains the cell. The cell will be
 	 *        activated/dactivated with the table.
 	 */
-	var TableCell = function(originalTd, tableObj) {
-        if (null == originalTd) {
-            originalTd = '<td>&nbsp;</td>';
-        }
+	var TableCell = function (originalTd, tableObj) {
+		if (null == originalTd) {
+			originalTd = '<td>&nbsp;</td>';
+		}
 
-        //original Td must be a DOM node so that the this.obj.context property is available
-        //this transformation will properly handle jQuery objects as well as DOM nodes
-        originalTd = jQuery( originalTd ).get( 0 );
+		//original Td must be a DOM node so that the this.obj.context property is available
+		//this transformation will properly handle jQuery objects as well as DOM nodes
+		originalTd = jQuery(originalTd).get(0);
 
-        this.obj = jQuery(originalTd);
-        this.tableObj = tableObj;
+		this.obj = jQuery(originalTd);
+		this.tableObj = tableObj;
 
-        tableObj.cells.push(this);
+		tableObj.cells.push(this);
 	};
 
 	/**
@@ -48,73 +49,142 @@ function (jQuery, Utils) {
 	TableCell.prototype.hasFocus = false;
 
 	TableCell.prototype.activate = function () {
+		var cell = this;
+		var $elem = cell.obj;
+
 		// wrap the created div into the contents of the cell
-		this.obj.wrapInner( '<div/>' );
+		$elem.wrapInner('<div/>');
 
 		// create the editable wrapper for the cells
-		var wrapper = this.obj.children( 'div' ).eq( 0 );
+		var $wrapper = $elem.children('div').eq(0);
+		$wrapper.contentEditable(true);
+		$wrapper.addClass('aloha-table-cell-editable');
 
-		wrapper.contentEditable( true );
-		wrapper.addClass( 'aloha-table-cell-editable' );
-
-		var that = this;
-		
 		// attach events to the editable div-object
-		wrapper.bind( 'focus', function ( jqEvent ) {
-			// ugly workaround for ext-js-adapter problem in ext-jquery-adapter-debug.js:1020
-			if ( jqEvent.currentTarget ) {
-				jqEvent.currentTarget.indexOf = function () {
+		$wrapper.bind('focus', function ($event) {
+			// ugly workaround for ext-js-adapter problem in
+			// ext-jquery-adapter-debug.js:1020
+			if ($event.currentTarget) {
+				$event.currentTarget.indexOf = function () {
 					return -1;
 				};
 			}
-			that._editableFocus( jqEvent );
-		} );
-		
-		wrapper.bind( 'mousedown', function ( jqEvent ) {
-			// ugly workaround for ext-js-adapter problem in ext-jquery-adapter-debug.js:1020
-			if ( jqEvent.currentTarget ) {
-				jqEvent.currentTarget.indexOf = function () {
-					return -1;
-				};
-			}
-			
-			that._editableMouseDown( jqEvent );
+			cell._editableFocus($event);
+		});
 
-			that._startCellSelection();
-		} );
-		wrapper.bind( 'blur',      function ( jqEvent ) { that._editableBlur( jqEvent );    });
-		wrapper.bind( 'keyup',     function ( jqEvent ) { that._editableKeyUp( jqEvent );   });
-		wrapper.bind( 'keydown',   function ( jqEvent ) { that._editableKeyDown( jqEvent ); });
-		wrapper.bind( 'mouseover', function ( jqEvent ) { that._selectCellRange();          });
+		$wrapper.bind('mousedown', function ($event) {
+			// ugly workaround for ext-js-adapter problem in ext-jquery-adapter-debug.js:1020
+			if ($event.currentTarget) {
+				$event.currentTarget.indexOf = function () {
+					return -1;
+				};
+			}
+
+			cell._editableMouseDown($event);
+
+			cell.tableObj.selection.baseCellPosition = [cell._virtualY(), cell._virtualX()];
+
+			if ($event.shiftKey) {
+				// shift-click to select a coherent cell range
+				//
+				// in IE it's not possible to select multiple cells when you "select+drag" over other cells
+				// click into the first cell and then "shift-click" into the last cell of the coherent cell range you want to select
+				var right = cell.tableObj.selection.lastBaseCellPosition[1];
+				var bottom = cell.tableObj.selection.lastBaseCellPosition[0];
+				var topLeft = cell.tableObj.selection.baseCellPosition;
+				var left = topLeft[1];
+				if (left > right) {
+					left = right;
+					right = topLeft[1];
+				}
+				var top = topLeft[0];
+				if (top > bottom) {
+					top = bottom;
+					bottom = topLeft[0];
+				}
+				var rect = {
+					"top": top,
+					"right": right,
+					"bottom": bottom,
+					"left": left
+				};
+
+				var table = cell.tableObj;
+				var $rows = table.obj.children().children('tr');
+				var grid = Utils.makeGrid($rows);
+
+				table.selection.selectedCells = [];
+				var selectClass = table.get('classCellSelected');
+				Utils.walkGrid(grid, function (cellInfo, j, i) {
+					if (Utils.containsDomCell(cellInfo)) {
+						if (i >= rect.top && i <= rect.bottom && j >= rect.left && j <= rect.right) {
+							jQuery(cellInfo.cell).addClass(selectClass);
+							table.selection.selectedCells.push(cellInfo.cell);
+						} else {
+							jQuery(cellInfo.cell).removeClass(selectClass);
+						}
+					}
+				});
+
+				table.selection.notifyCellsSelected();
+			} else {
+				cell.tableObj.selection.lastBaseCellPosition = cell.tableObj.selection.baseCellPosition;
+				cell._editableMouseDown($event);
+				cell._startCellSelection();
+			}
+		});
+
+		$wrapper.bind('blur', function ($event) {
+			cell._editableBlur($event);
+		});
+		$wrapper.bind('keyup', function ($event) {
+			cell._editableKeyUp($event);
+		});
+		$wrapper.bind('keydown', function ($event) {
+			cell._editableKeyDown($event);
+		});
+		$wrapper.bind('mouseover', function ($event) {
+			cell._selectCellRange();
+		});
 
 		// we will treat the wrapper just like an editable
-		wrapper.contentEditableSelectionChange( function ( event ) {
-			Aloha.Selection.onChange( wrapper, event );
-			return wrapper;
-		} );
+		$wrapper.contentEditableSelectionChange(function ($event) {
+			Aloha.Selection.onChange($wrapper, $event);
+			return $wrapper;
+		});
 
-		this.obj.bind( 'mousedown', function ( jqEvent ) {
-			setTimeout( function () {
-				that.wrapper.trigger( 'focus' );
-			}, 1 );
-			that.tableObj.selection.unselectCells();
-	        that._startCellSelection();       
-			jqEvent.stopPropagation();
-		} );
+		$elem.bind('mousedown', function ($event) {
+			window.setTimeout(function () {
+				// Select the entire cell's content.
+				cell.wrapper.trigger('focus');
+				cell._selectAll($wrapper);
+			}, 1);
+			if (!$event.shiftKey) {
+				cell.tableObj.selection.unselectCells();
+				cell._startCellSelection();
+			}
+			$event.stopPropagation();
+		});
 
-		if ( this.obj.get( 0 ) ) {
-			this.obj.get( 0 ).onselectstart = function ( jqEvent ) { return false; };
+		if ($elem.get(0)) {
+			$elem.get(0).onselectstart = function () {
+				return false;
+			};
 		}
 
 		// set contenteditable wrapper div
-		this.wrapper = this.obj.children();
-		if ( this.wrapper.get( 0 ) ) {
-			this.wrapper.get( 0 ).onselectstart = function () {
+		this.wrapper = $elem.children();
+		if (this.wrapper.get(0)) {
+			this.wrapper.get(0).onselectstart = function () {
 				window.event.cancelBubble = true;
 			};
-			// Disabled the dragging of content, since it makes cell selection difficult
-			this.wrapper.get( 0 ).ondragstart = function () { return false };
+			// Disabled the dragging of content, since it makes cell selection
+			// difficult.
+			this.wrapper.get(0).ondragstart = function () {
+				return false
+			};
 		}
+
 		return this;
 	};
 
@@ -124,7 +194,7 @@ function (jQuery, Utils) {
 	 *
 	 * @return void
 	 */
-	TableCell.prototype.deactivate = function() {
+	TableCell.prototype.deactivate = function () {
 		var wrapper = jQuery(this.obj.children('.aloha-table-cell-editable'));
 
 		if (wrapper.length) {
@@ -132,13 +202,14 @@ function (jQuery, Utils) {
 			wrapper.parent().append(
 				wrapper.contents()
 			);
-			
+
 			// remove the contenteditable div and its attached events
 			wrapper.remove();
-			
+
 
 			// remove the click event of the
 			this.obj.unbind('click');
+			this.obj.unbind('mousedown');
 
 			if (jQuery.trim(this.obj.attr('class')) == '') {
 				this.obj.removeAttr('class');
@@ -151,7 +222,7 @@ function (jQuery, Utils) {
 	 *
 	 * @return string name of the namespace
 	 */
-	TableCell.prototype.toString = function() {
+	TableCell.prototype.toString = function () {
 		return 'TableCell';
 	};
 
@@ -164,7 +235,7 @@ function (jQuery, Utils) {
 	 *            the jquery event object
 	 * @return void
 	 */
-	TableCell.prototype._editableFocus = function(e) {
+	TableCell.prototype._editableFocus = function (e) {
 		// only do activation stuff if the cell don't has the focus
 		if (!this.hasFocus) {
 			// set an internal flag to focus the table
@@ -175,9 +246,6 @@ function (jQuery, Utils) {
 
 			// set the focus flag
 			this.hasFocus = true;
-
-			// select the whole content in the table-data field
-			this._selectAll(this.wrapper.get(0));
 
 			// unset the selection type
 			this.tableObj.selection.selectionType = 'cell';
@@ -195,7 +263,7 @@ function (jQuery, Utils) {
 	 *            the jquery event object
 	 * @return void
 	 */
-	TableCell.prototype._editableBlur = function(jqEvent){
+	TableCell.prototype._editableBlur = function (jqEvent) {
 
 		// reset the focus of the cell
 		this.hasFocus = false;
@@ -205,9 +273,9 @@ function (jQuery, Utils) {
 	};
 
 	/**
-	 * Gives the X (column no) for a cell, after adding colspans 
+	 * Gives the X (column no) for a cell, after adding colspans
 	 */
-	TableCell.prototype._virtualX = function(){
+	TableCell.prototype._virtualX = function () {
 		var $rows = this.tableObj.obj.children().children('tr');
 		var rowIdx = this.obj.parent().index();
 		var colIdx = this.obj.index();
@@ -215,45 +283,44 @@ function (jQuery, Utils) {
 	};
 
 	/**
-	 * Gives the Y (row no) for a cell, after adding colspans 
+	 * Gives the Y (row no) for a cell, after adding colspans
 	 */
-	TableCell.prototype._virtualY = function(){
+	TableCell.prototype._virtualY = function () {
 		return this.obj.parent('tr').index();
 	};
 
 	/**
 	 * Starts the cell selection mode
 	 */
-	TableCell.prototype._startCellSelection = function(){
-		if(!this.tableObj.selection.cellSelectionMode){
-			
+	TableCell.prototype._startCellSelection = function () {
+		if(!this.tableObj.selection.cellSelectionMode) {
+
 			//unselect currently selected cells
 			this.tableObj.selection.unselectCells();
 
 			// activate cell selection mode
-			this.tableObj.selection.cellSelectionMode = true; 
-			
+			this.tableObj.selection.cellSelectionMode = true;
+
 			//bind a global mouseup event handler to stop cell selection
 			var that = this;
-			jQuery('body').bind('mouseup.cellselection', function(){
+			jQuery('body').bind('mouseup.cellselection', function () {
 				that._endCellSelection();
-				
+
 			});
 
 			this.tableObj.selection.baseCellPosition = [this._virtualY(), this._virtualX()];
-			
-			
+
 		}
 	};
 
 	/**
 	 * Ends the cell selection mode
 	 */
-	TableCell.prototype._endCellSelection = function(){
-		if(this.tableObj.selection.cellSelectionMode){
-			this.tableObj.selection.cellSelectionMode = false; 
+	TableCell.prototype._endCellSelection = function() {
+		if(this.tableObj.selection.cellSelectionMode) {
+			this.tableObj.selection.cellSelectionMode = false;
 			this.tableObj.selection.baseCellPosition = null;
-			this.tableObj.selection.lastSelectionRange = null; 
+			this.tableObj.selection.lastSelectionRange = null;
 
 			this.tableObj.selection.selectionType = 'cell';
 
@@ -276,15 +343,20 @@ function (jQuery, Utils) {
 			top = bottom;
 			bottom = topLeft[0];
 		}
-		return {"top": top, "right": right, "bottom": bottom, "left": left};
+		return {
+			"top": top,
+			"right": right,
+			"bottom": bottom,
+			"left": left
+		};
 	};
 
 	/**
 	 * Toggles selection of cell.
-	 * This works only when cell selection mode is active. 
+	 * This works only when cell selection mode is active.
 	 */
-	TableCell.prototype._selectCellRange = function(){
-		if(!this.tableObj.selection.cellSelectionMode) {
+	TableCell.prototype._selectCellRange = function() {
+		if(this.tableObj.selection.resizeMode || !this.tableObj.selection.cellSelectionMode) {
 			return;
 		}
 
@@ -293,16 +365,16 @@ function (jQuery, Utils) {
 		var table = this.tableObj;
 		var $rows = table.obj.children().children('tr');
 		var grid = Utils.makeGrid($rows);
-		
+
 		table.selection.selectedCells = [];
 		var selectClass = table.get('classCellSelected');
 		Utils.walkGrid(grid, function (cellInfo, j, i) {
-			if ( Utils.containsDomCell(cellInfo) ) {
+			if (Utils.containsDomCell(cellInfo)) {
 				if (i >= rect.top && i <= rect.bottom && j >= rect.left && j <= rect.right) {
-					jQuery( cellInfo.cell ).addClass(selectClass);
+					jQuery(cellInfo.cell).addClass(selectClass);
 					table.selection.selectedCells.push(cellInfo.cell);
 				} else {
-					jQuery( cellInfo.cell ).removeClass(selectClass);
+					jQuery(cellInfo.cell).removeClass(selectClass);
 				}
 			}
 		});
@@ -316,21 +388,20 @@ function (jQuery, Utils) {
 	 * @param editableNode dom-representation of the editable node (div-element)
 	 * @return void
 	 */
-	TableCell.prototype._selectAll = function(editableNode) {
+	TableCell.prototype._selectAll = function (editableNode) {
 		var e = (editableNode.jquery) ? editableNode.get(0) : editableNode;
 
 		// Not IE
 		if (!jQuery.browser.msie) {
 			var s = window.getSelection();
 			// WebKit
-			if ( s.setBaseAndExtent /*&& e> 0 */ ) {
-				s.setBaseAndExtent( e, 0, e, Math.max( 0, e.innerText.length - 1 ) );
+			if (s.setBaseAndExtent /*&& e> 0 */ ) {
+				s.setBaseAndExtent(e, 0, e, Math.max(0, e.innerText.length - 1));
 			}
 			// Firefox and Opera
 			else {
 				// workaround for bug # 42885
-				if (window.opera
-					&& e.innerHTML.substring(e.innerHTML.length - 4) == '<BR>') {
+				if (window.opera && e.innerHTML.substring(e.innerHTML.length - 4) == '<BR>') {
 					e.innerHTML = e.innerHTML + '&#160;';
 				}
 
@@ -364,7 +435,7 @@ function (jQuery, Utils) {
 	 *            the jquery-event object
 	 * @return void
 	 */
-	TableCell.prototype._editableMouseDown = function(jqEvent) {
+	TableCell.prototype._editableMouseDown = function (jqEvent) {
 		// deselect all highlighted cells registered in the this.tableObj.selection object
 		this.tableObj.selection.unselectCells();
 
@@ -381,7 +452,7 @@ function (jQuery, Utils) {
 	 *            the jquery-event object
 	 * @return void
 	 */
-	TableCell.prototype._editableKeyUp = function( jqEvent ) {
+	TableCell.prototype._editableKeyUp = function (jqEvent) {
 		//TODO do we need to check for empty cells and insert a space?
 		//this._checkForEmptyEvent(jqEvent);
 	};
@@ -395,11 +466,11 @@ function (jQuery, Utils) {
 	 *            the jquery-event object
 	 * @return void
 	 */
-	TableCell.prototype._editableKeyDown = function(jqEvent) {
+	TableCell.prototype._editableKeyDown = function (jqEvent) {
 		var KEYCODE_TAB = 9;
 
 		this._checkForEmptyEvent(jqEvent);
-		
+
 		if ( this.obj[0] === this.tableObj.obj.find('tr:last td:last')[0] ) {
 			// only add a row on a single key-press of tab (so check
 			// that alt-, shift- or ctrl-key are NOT pressed)
@@ -426,16 +497,16 @@ function (jQuery, Utils) {
 	 *            the event object which is given by jquery
 	 * @return void
 	 */
-	TableCell.prototype._checkForEmptyEvent = function(jqEvent) {
+	TableCell.prototype._checkForEmptyEvent = function (jqEvent) {
 		var $wrapper = jQuery(this.wrapper),
-		    text = $wrapper.text();
+			text = $wrapper.text();
 
-		if ( $wrapper.children().length > 0) {
+		if ($wrapper.children().length > 0) {
 			return;
 		}
 
 		// if empty insert a blank space and blur and focus the wrapper
-		if ( text === '' ){
+		if (text === '') {
 			this.wrapper.text('\u00a0');
 			this.wrapper.get(0).blur();
 			this.wrapper.get(0).focus();
@@ -447,13 +518,13 @@ function (jQuery, Utils) {
 	 * of the cell. The container element may be the given cell itself,
 	 * or a wrapper element, in the case of activated cells.
 	 *
-	 * @param {DomNode} cell 
+	 * @param {DomNode} cell
 	 *        the TH/TD of a TableCell that may or may not be actived.
 	 * @return {DomNode}
 	 *        the element that contains the contents of the given cell.
 	 */
-	TableCell.getContainer = function ( cell ) {
-		if ( jQuery( cell.firstChild ).hasClass( "aloha-table-cell-editable" ) ) {
+	TableCell.getContainer = function (cell) {
+		if (jQuery(cell.firstChild).hasClass("aloha-table-cell-editable")) {
 			return cell.firstChild;
 		} else {
 			return cell;

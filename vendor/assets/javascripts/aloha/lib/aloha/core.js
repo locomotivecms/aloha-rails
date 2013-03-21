@@ -1,49 +1,287 @@
-/*!
-* This file is part of Aloha Editor Project http://aloha-editor.org
-* Copyright Â© 2010-2011 Gentics Software GmbH, aloha@gentics.com
-* Contributors http://aloha-editor.org/contribution.php 
-* Licensed unter the terms of http://www.aloha-editor.org/license.html
-*//*
-* Aloha Editor is free software: you can redistribute it and/or modify
-* it under the terms of the GNU Affero General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.*
-*
-* Aloha Editor is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU Affero General Public License for more details.
-*
-* You should have received a copy of the GNU Affero General Public License
-* along with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
-define(
-
-[
-	'aloha/jquery',
+/*core.js is part of Aloha Editor project http://aloha-editor.org
+ *
+ * Aloha Editor is a WYSIWYG HTML5 inline editing library and editor.
+ * Copyright (c) 2010-2012 Gentics Software GmbH, Vienna, Austria.
+ * Contributors http://aloha-editor.org/contribution.php
+ *
+ * Aloha Editor is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or any later version.
+ *
+ * Aloha Editor is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * As an additional permission to the GNU GPL version 2, you may distribute
+ * non-source (e.g., minimized or compacted) forms of the Aloha-Editor
+ * source code without the copy of the GNU GPL normally required,
+ * provided you include this license notice and a URL through which
+ * recipients can access the Corresponding Source.
+ */
+define([
+	'jquery',
 	'aloha/pluginmanager'
-],
+], function (
+	$,
+	PluginManager
+) {
+	'use strict';
 
-function ( jQuery, PluginManager ) {
-	
+	var Aloha = window.Aloha;
 
-	// Aloha Editor does not support Internet Explorer 6.  ExtJS style fixes for
-	// IE6 which are applied through the "ext-ie6" class cause visual bugs in
-	// IE9, and so we remove it so that IE6 fixes are not applied.
-	Aloha.ready(function() {
-		jQuery('.ext-ie6').removeClass('ext-ie6');
-	});
-
-	//----------------------------------------
-	// Private variables
-	//----------------------------------------
-	
 	/**
-	 * Hash table that will be populated through the loadPlugins method.
-	 * Maps the names of plugins with their urls for easy assess in the getPluginsUrl method
+	 * Checks whether the current user agent is supported.
+	 *
+	 * @return {boolean} True if Aloha supports the current browser.
 	 */
-	var pluginPaths = {};
+	function isBrowserSupported() {
+		var browser = $.browser;
+		var version = browser.version;
+		return !(
+			// Chrome/Safari 4
+			(browser.webkit && parseFloat(version) < 532.5) ||
+			// FF 3.5
+			(browser.mozilla && parseFloat(version) < 1.9) ||
+			// IE 7
+			(browser.msie && version < 7) ||
+			// Right now Opera needs some work
+			(browser.opera && version < 11)
+		);
+	}
+
+	/**
+	 * Checks whether the given jQuery event originates from an Aloha dialog
+	 * element.
+	 *
+	 * This is used to facilitate a hackish way of preventing blurring
+	 * editables when interacting with Aloha UI modals.
+	 *
+	 * @param {jQuery<Event>} $event
+	 * @return {boolean} True if $event is initiated from within an Aloha
+	 *                   dialog element.
+	 */
+	function originatesFromDialog($event) {
+		var $target = $($event.target);
+		return $target.is('.aloha-dialog')
+			|| $target.closest('.aloha').length;
+	}
+
+	/**
+	 * Registers events on the documents to cause editables to be blurred when
+	 * clicking outside of editables.
+	 *
+	 * Hack: Except when the click originates from a modal dialog.
+	 */
+	function registerEvents() {
+		$('html').mousedown(function ($event) {
+			if (Aloha.activeEditable && !Aloha.eventHandled
+					&& !originatesFromDialog($event)) {
+				Aloha.deactivateEditable();
+			}
+		}).mouseup(function () {
+			Aloha.eventHandled = false;
+		});
+	}
+
+	/**
+	 * Initialize Aloha.
+	 *
+	 * @param {function} event Event to trigger after completing tasks.
+	 * @param {function} next Function to call after completing tasks.
+	 */
+	function initAloha(event, next) {
+		if (!isBrowserSupported()) {
+			var console = window.console;
+			if (console) {
+				var fn = console.error ? 'error' : console.log ? 'log' : null;
+				if (fn) {
+					console[fn]('This browser is not supported');
+				}
+			}
+			return;
+		}
+
+		// Because different css is to be applied based on what the user-agent
+		// supports.  For example: outlines do not render in IE7.
+		if ($.browser.webkit) {
+			$('html').addClass('aloha-webkit');
+		} else if ($.browser.opera) {
+			$('html').addClass('aloha-opera');
+		} else if ($.browser.msie) {
+			$('html').addClass('aloha-ie' + parseInt($.browser.version, 10));
+		} else if ($.browser.mozilla) {
+			$('html').addClass('aloha-mozilla');
+		}
+
+		if (navigator.appVersion.indexOf('Win') !== -1) {
+			Aloha.OSName = 'Win';
+		} else if (navigator.appVersion.indexOf('Mac') !== -1) {
+			Aloha.OSName = 'Mac';
+		} else if (navigator.appVersion.indexOf('X11') !== -1) {
+			Aloha.OSName = 'Unix';
+		} else if (navigator.appVersion.indexOf('Linux') !== -1) {
+			Aloha.OSName = 'Linux';
+		}
+
+		registerEvents();
+		Aloha.settings.base = Aloha.getAlohaUrl();
+		Aloha.Log.init();
+
+		// Initialize error handler for general javascript errors.
+		if (Aloha.settings.errorhandling) {
+			window.onerror = function (msg, url, line) {
+				Aloha.Log.error(Aloha, 'Error message: ' + msg + '\nURL: ' +
+				                       url + '\nLine Number: ' + line);
+				return true;
+			};
+		}
+
+		event();
+		next();
+	}
+
+	/**
+	 * Initialize managers
+	 *
+	 * @param {function} event Event to trigger after completing tasks.
+	 * @param {function} next Function to call after completing tasks.
+	 */
+	function initRepositoryManager(event, next) {
+		Aloha.RepositoryManager.init();
+		event();
+		next();
+	}
+
+	/**
+	 * Initialize Aloha plugins.
+	 *
+	 *
+	 * @param {function} event Event to trigger after completing tasks.
+	 * @param {function} next Callback that will be invoked after all plugins
+	 *                        have been initialized.  Whereas plugins are loaded
+	 *                        synchronously, plugins may initialize
+	 *                        asynchronously.
+	 */
+	function initPluginManager(event, next) {
+		// Because if there are no loadedPlugins specified, then the default is
+		// to initialized all available plugins.
+		if (0 === Aloha.loadedPlugins.length) {
+			var plugins = PluginManager.plugins;
+			var plugin;
+			for (plugin in plugins) {
+				if (plugins.hasOwnProperty(plugin)) {
+					Aloha.loadedPlugins.push(plugin);
+				}
+			}
+		}
+
+		var fired = false;
+
+		PluginManager.init(function () {
+			if (!fired) {
+				event();
+				fired = true;
+			}
+			next();
+		}, Aloha.loadedPlugins);
+
+		if (!fired) {
+			event();
+			fired = true;
+		}
+	}
+
+	/**
+	 * Begin initialize editables.
+	 *
+	 * @param {function} event Event to trigger after completing tasks.
+	 * @param {function} next Function to call after completing tasks.
+	 */
+	function initEditables(event, next) {
+		var i;
+		for (i = 0; i < Aloha.editables.length; i++) {
+			if (!Aloha.editables[i].ready) {
+				Aloha.editables[i].init();
+			}
+		}
+		event();
+		next();
+	}
+
+	/**
+	 * Initialization phases.
+	 *
+	 * These stages denote the initialization states which Aloha will go
+	 * through from loading to ready.
+	 *
+	 * Each phase object contains the following properties:
+	 *        fn : The process that is to be invoked during this phase.
+	 *             Will take two functions: event() and next().
+	 *     event : The event name, which if provided, will be fired after the
+	 *             phase has been started (optional).
+	 *  deferred : A $.Deferred() object to hold event handlers until that
+	 *             initialization phase has been done (optional).
+	 *
+	 * @type {Array.<phase>}
+	 */
+	var phases = [
+		// Phase 0: Waiting for initialization to begin.  This is the state at
+		//          load-time.
+		{
+			fn: null,
+			event: null,
+			deferred: null
+		},
+
+		// Phase 1: DOM is ready; performing compatibility checks, registering
+		//          basic events, and initializing logging.
+		{
+			fn: initAloha,
+			event: null,
+			deferred: null
+		},
+
+		// Phase 2: Initial checks have passed; Initializing repository manger.
+		{
+			fn: initRepositoryManager,
+			event: null,
+			deferred: null
+		},
+
+		// Phase 3: Repository manager is ready for use; commence
+		//          initialization of configured or default plugins.
+		{
+			fn: initPluginManager,
+			event: 'aloha-plugins-loaded',
+			deferred: null
+		},
+
+		// Phase 4: Plugins have all begun their initialization process, but it
+		//          is not necessary that they have completed.  Start
+		//          initializing editable, along with their scaffolding UI.
+		//          Editables will not be fully initialized however, until
+		//          plugins have finished initialization.
+		{
+			fn: initEditables,
+			event: null,
+			deferred: null
+		},
+
+		// Phase 5: The "ready" state.  Notify the system that Aloha is fully
+		//          loaded, and ready for use.
+		{
+			fn: null,
+			event: 'aloha-ready',
+			deferred: null
+		}
+	];
+
 
 	/**
 	 * Base Aloha Object
@@ -51,14 +289,14 @@ function ( jQuery, PluginManager ) {
 	 * @class Aloha The Aloha base object, which contains all the core functionality
 	 * @singleton
 	 */
-	jQuery.extend(true, Aloha, {
+	$.extend(true, Aloha, {
 
 		/**
 		 * The Aloha Editor Version we are using
 		 * It should be set by us and updated for the particular branch
 		 * @property
 		 */
-		version: '0.10.0',
+		version: '${version}',
 
 		/**
 		 * Array of editables that are managed by Aloha
@@ -79,18 +317,18 @@ function ( jQuery, PluginManager ) {
 		 * @cfg {Object} object Aloha's settings
 		 */
 		settings: {},
-		
+
 		/**
 		 * defaults object, which will contain all Aloha defaults
 		 * @cfg {Object} object Aloha's settings
 		 */
 		defaults: {},
-		
+
 		/**
 		 * Namespace for ui components
 		 */
 		ui: {},
-		
+
 		/**
 		 * This represents the name of the users OS. Could be:
 		 * 'Mac', 'Linux', 'Win', 'Unix', 'Unknown'
@@ -100,164 +338,24 @@ function ( jQuery, PluginManager ) {
 		OSName: 'Unknown',
 
 		/**
-		 * Which stage is the aloha init process at?
-		 * @property
-		 * @type string
-		 */
-		stage: 'loadingAloha',
-
-		/**
-		 * A list of loaded plugin names. Available after the
-		 * "loadPlugins" stage.
+		 * A list of loaded plugin names, available after the STAGES.PLUGINS
+		 * initialization phase.
 		 *
-		 * @property
-		 * @type array
+		 * @type {Array.<string>}
 		 * @internal
 		 */
 		loadedPlugins: [],
 
-		requirePaths: [],
 		/**
-		 * Initialize the initialization process
+		 * Maps names of plugins (link) to the base URL (../plugins/common/link).
+		 */
+		_pluginBaseUrlByName: {},
+
+		/**
+		 * Start the initialization process.
 		 */
 		init: function () {
-				
-			// merge defaults and settings and provide all in settings
-			Aloha.settings = jQuery.extendObjects( true, {}, Aloha.defaults, Aloha.settings );
-
-			// initialize rangy. This is probably necessary here,
-			// because due to the current loading mechanism, rangy
-			// doesn't initialize itself in all browsers
-			if (window.rangy) {
-				window.rangy.init();
-			}
-			
-			// Load & Initialise
-			Aloha.stage = 'loadPlugins';
-			Aloha.loadPlugins(function(){
-				Aloha.stage = 'initAloha';
-				Aloha.initAloha(function(){
-					Aloha.stage = 'initPlugins';
-					Aloha.initPlugins(function(){
-						Aloha.stage = 'initGui';
-						Aloha.initGui(function(){
-							Aloha.stage = 'alohaReady';
-							Aloha.trigger('aloha-ready');
-						});
-					});
-				});
-			});
-		},
-
-		/**
-		 * Load Plugins
-		 */
-		loadPlugins: function (next) {
-			// contains an array like [common/format, common/block]
-			var configuredPluginsWithBundle = this.getPluginsToBeLoaded();
-
-			if (configuredPluginsWithBundle.length) {
-				var paths = {},
-				    pluginNames = [],
-				    requiredInitializers = [],
-				    pathsToPlugins = {};
-
-				// Background: We do not use CommonJS packages for our Plugins
-				// as this breaks the loading order when these modules have
-				// other dependencies.
-				// We "emulate" the commonjs modules with the path mapping.
-				/* require(
-				 *  { paths: {
-				 *      'format': 'plugins/common/format/lib',
-				 *      'format/nls': 'plugins/common/format/nls',
-				 *      ... for every plugin ...
-				 *    }
-				 *  },
-				 *  ['format/format-plugin', ... for every plugin ...],
-				 *  next <-- when everything is loaded, we continue
-				 */
-				jQuery.each(configuredPluginsWithBundle, function (i, configuredPluginWithBundle) {
-					var tmp, bundleName, pluginName, bundlePath = '';
-
-					tmp = configuredPluginWithBundle.split('/');
-					bundleName = tmp[0];
-					pluginName = tmp[1];
-
-					// TODO assertion if pluginName or bundleName NULL _-> ERROR!!
-
-					if (Aloha.settings.basePath) {
-						bundlePath = Aloha.settings.basePath;
-					}
-
-					if (Aloha.settings.bundles && Aloha.settings.bundles[bundleName]) {
-						bundlePath += Aloha.settings.bundles[bundleName];
-					} else {
-						bundlePath += '../plugins/' + bundleName;
-					}
-
-					pluginNames.push(pluginName);
-					paths[pluginName] = bundlePath + '/' + pluginName + '/lib';
-
-					pathsToPlugins[pluginName] = bundlePath + '/' + pluginName;
-
-					// As the "nls" path lies NOT inside /lib/, but is a sibling to /lib/, we need
-					// to register it explicitely. The same goes for the "css" folder.
-					jQuery.each(['nls', 'css', 'vendor', 'res'], function() {
-						paths[pluginName + '/' + this] = bundlePath + '/' + pluginName + '/' + this;
-					});
-
-					requiredInitializers.push(pluginName + '/' + pluginName + '-plugin');
-				});
-
-				this.loadedPlugins = pluginNames;
-				this.requirePaths = paths;
-				
-				// Main Require.js loading call, which fetches all the plugins.
-				require(
-					{
-						context: 'aloha',
-						paths: paths,
-						locale: this.settings.locale || this.defaults.locale || 'en'
-					},
-					requiredInitializers,
-					next
-				);
-
-				pluginPaths = pathsToPlugins;
-			} else {
-				next();
-			}
-		},
-
-		/**
-		 * Fetches plugins the user wants to have loaded. Returns all plugins the user
-		 * has specified with the data-plugins property as array, with the bundle
-		 * name in front.
-		 * It's also possible to use 'Aloha.settings.plugins.load' to define the plugins
-		 * to load.
-		 *
-		 * @return array
-		 * @internal
-		 */
-		getPluginsToBeLoaded: function() {
-			// look for data-aloha-plugins attributes and load values
-			var
-				plugins = jQuery('[data-aloha-plugins]').data('aloha-plugins');
-
-			// load aloha plugins from config
-			if ( typeof Aloha.settings.plugins != 'undefined' && typeof Aloha.settings.plugins.load != 'undefined' ) {
-				plugins = Aloha.settings.plugins.load;
-				if (plugins instanceof Array) {
-					return plugins;
-				}
-			}
-
-			// Determine Plugins
-			if ( typeof plugins === 'string' && plugins !== "") {
-				return plugins.replace(/\s+/g, '').split(',');
-			}
-			// Return
-			return [];
+			Aloha.initialize(phases);
 		},
 
 		/**
@@ -265,150 +363,42 @@ function ( jQuery, PluginManager ) {
 		 *
 		 * @return array
 		 */
-		getLoadedPlugins: function() {
+		getLoadedPlugins: function () {
 			return this.loadedPlugins;
 		},
 
 		/**
 		 * Returns true if a certain plugin is loaded, false otherwise.
+		 *
+		 * @param {string} plugin Name of plugin
+		 * @return {boolean} True if plugin with given name is load.
 		 */
-		isPluginLoaded: function(pluginName) {
-			var found = false;
-			jQuery.each(this.loadedPlugins, function() {
-				if (pluginName.toString() === this.toString()) {
-					found = true;
+		isPluginLoaded: function (name) {
+			var loaded = false;
+			$.each(this.loadedPlugins, function (i, plugin) {
+				if (name === plugin.toString()) {
+					loaded = true;
+					return false;
 				}
 			});
-			return found;
+			return loaded;
 		},
 
 		/**
-		 * Initialise Aloha
-		 */
-		initAloha: function(next){
-			// check browser version on init
-			// this has to be revamped, as
-			if (jQuery.browser.webkit && parseFloat(jQuery.browser.version) < 532.5 || // Chrome/Safari 4
-				jQuery.browser.mozilla && parseFloat(jQuery.browser.version) < 1.9 || // FF 3.5
-				jQuery.browser.msie && jQuery.browser.version < 7 || // IE 7
-				jQuery.browser.opera && jQuery.browser.version < 11 ) { // right now, Opera needs some work
-				if (window.console && window.console.log) {
-					window.console.log( 'Your browser is not supported.' );
-				}
-			}
-
-			// register the body click event to blur editables
-			jQuery('html').mousedown(function(e) {
-				// if an Ext JS modal is visible, we don't want to loose the focus on
-				// the editable as we assume that the user must have clicked somewhere
-				// in the modal... where else could he click?
-				// loosing the editable focus in this case hinders correct table
-				// column/row deletion, as the table module will clean it's selection
-				// as soon as the editable is deactivated. Fusubscriberthermore you'd have to
-				// refocus the editable again, which is just strange UX
-				if (Aloha.activeEditable && !Aloha.isMessageVisible() && !Aloha.eventHandled) {
-					Aloha.activeEditable.blur();
-					Aloha.activeEditable = null;
-				}
-			}).mouseup(function(e) {
-				Aloha.eventHandled = false;
-			});
-			
-			// Initialise the base path to the aloha files
-			Aloha.settings.base = Aloha.getAlohaUrl();
-
-			// initialize the Log
-			Aloha.Log.init();
-
-			// initialize the error handler for general javascript errors
-			if ( Aloha.settings.errorhandling ) {
-				window.onerror = function (msg, url, linenumber) {
-					Aloha.Log.error(Aloha, 'Error message: ' + msg + '\nURL: ' + url + '\nLine Number: ' + linenumber);
-					// TODO eventually add a message to the message line?
-					return true;
-				};
-			}
-
-			// OS detection
-			if (navigator.appVersion.indexOf('Win') != -1) {
-				Aloha.OSName = 'Win';
-			}
-			if (navigator.appVersion.indexOf('Mac') != -1) {
-				Aloha.OSName = 'Mac';
-			}
-			if (navigator.appVersion.indexOf('X11') != -1) {
-				Aloha.OSName = 'Unix';
-			}
-			if (navigator.appVersion.indexOf('Linux') != -1) {
-				Aloha.OSName = 'Linux';
-			}
-
-			try {
-				// this will disable browsers image resizing facilities
-				// disable resize handles
-				var supported;
-				try {
-					supported = document.queryCommandSupported( 'enableObjectResizing' );
-				} catch ( e ) {
-					supported = false;
-					Aloha.Log.log( 'enableObjectResizing is not supported.' );
-				}
-				
-				if ( supported ) {
-					document.execCommand( 'enableObjectResizing', false, false);
-					Aloha.Log.log( 'enableObjectResizing disabled.' );
-				}
-			} catch (e) {
-				Aloha.Log.error( e, 'Could not disable enableObjectResizing' );
-				// this is just for others, who will not support disabling enableObjectResizing
-			}
-			// Forward
-			next();
-		},
-
-		/**
-		 * Loads plugins Aloha
-		 * @return void
-		 */
-		initPlugins: function (next) {
-			PluginManager.init(function(){
-				next();
-			}, this.getLoadedPlugins() );
-		},
-
-		/**
-		 * Loads GUI components
-		 * @return void
-		 */
-		initGui: function (next) {
-			
-			Aloha.RepositoryManager.init();
-
-			// activate registered editables
-			for (var i = 0, editablesLength = Aloha.editables.length; i < editablesLength; i++) {
-				if ( !Aloha.editables[i].ready ) {
-					Aloha.editables[i].init();
-				}
-			}
-
-			// Forward
-			next();
-		},
-
-		/**
-		 * Activates editable and deactivates all other Editables
+		 * Activates editable and deactivates all other Editables.
+		 *
 		 * @param {Editable} editable the Editable to be activated
-		 * @return void
 		 */
 		activateEditable: function (editable) {
-
-			// blur all editables, which are currently active
-			for (var i = 0, editablesLength = Aloha.editables.length; i < editablesLength; i++) {
-				if (Aloha.editables[i] != editable && Aloha.editables[i].isActive) {
-					Aloha.editables[i].blur();
+			// Because editables may be removed on blur, Aloha.editables.length
+			// is not cached.
+			var editables = Aloha.editables;
+			var i;
+			for (i = 0; i < editables.length; i++) {
+				if (editables[i] !== editable && editables[i].isActive) {
+					editables[i].blur();
 				}
 			}
-
 			Aloha.activeEditable = editable;
 		},
 
@@ -416,55 +406,57 @@ function ( jQuery, PluginManager ) {
 		 * Returns the current Editable
 		 * @return {Editable} returns the active Editable
 		 */
-		getActiveEditable: function() {
+		getActiveEditable: function () {
 			return Aloha.activeEditable;
 		},
 
 		/**
-		 * deactivated the current Editable
-		 * @return void
+		 * Deactivates the active Editable.
+		 *
+		 * TODO: Would be better named "deactivateActiveEditable".
 		 */
 		deactivateEditable: function () {
-
-			if ( typeof Aloha.activeEditable === 'undefined' || Aloha.activeEditable === null ) {
-				return;
+			if (Aloha.activeEditable) {
+				Aloha.activeEditable.blur();
+				Aloha.activeEditable = null;
 			}
-
-			// blur the editable
-			Aloha.activeEditable.blur();
-			Aloha.activeEditable = null;
 		},
 
 		/**
-		 * Gets an editable by an ID or null if no Editable with that ID registered.
-		 * @param {string} id the element id to look for.
-		 * @return {Aloha.Editable} editable
+		 * Gets an editable by an ID or null if no Editable with that ID
+		 * registered.
+		 *
+		 * @param {string} id The element id to look for.
+		 * @return {Aloha.Editable|null} An editable, or null if none if found
+		 *                               for the given id.
 		 */
 		getEditableById: function (id) {
-
-			// if the element is a textarea than route to the editable div
-			if (jQuery('#'+id).get(0).nodeName.toLowerCase() === 'textarea' ) {
+			// Because if the element is a textarea, then it's necessary to
+			// route to the editable div.
+			var $editable = $('#' + id);
+			if ($editable.length
+					&& 'textarea' === $editable[0].nodeName.toLowerCase()) {
 				id = id + '-aloha';
 			}
-
-			// serach all editables for id
-			for (var i = 0, editablesLength = Aloha.editables.length; i < editablesLength; i++) {
-				if (Aloha.editables[i].getId() == id) {
+			var i;
+			for (i = 0; i < Aloha.editables.length; i++) {
+				if (Aloha.editables[i].getId() === id) {
 					return Aloha.editables[i];
 				}
 			}
-
 			return null;
 		},
 
 		/**
-		 * Checks wheater an object is a registered Aloha Editable.
+		 * Checks whether an object is a registered Aloha Editable.
 		 * @param {jQuery} obj the jQuery object to be checked.
 		 * @return {boolean}
 		 */
 		isEditable: function (obj) {
-			for (var i=0, editablesLength = Aloha.editables.length; i < editablesLength; i++) {
-				if ( Aloha.editables[i].originalObj.get(0) === obj ) {
+			var i, editablesLength;
+
+			for (i = 0, editablesLength = Aloha.editables.length; i < editablesLength; i++) {
+				if (Aloha.editables[i].originalObj.get(0) === obj) {
 					return true;
 				}
 			}
@@ -472,22 +464,59 @@ function ( jQuery, PluginManager ) {
 		},
 
 		/**
-		 * Logs a message to the console
-		 * @param level Level of the log ("error", "warn" or "info", "debug")
-		 * @param component Component that calls the log
-		 * @param message log message
-		 * @return void
+		 * Gets the nearest editable parent of the DOM element contained in the
+		 * given jQuery object.
+		 *
+		 * @param {jQuery} $element jQuery unit set containing DOM element.
+		 * @return {Aloha.Editable} Editable, or null if none found.
+		 */
+		getEditableHost: (function () {
+			var getEditableOf = function (editable) {
+				var i;
+				for (i = 0; i < Aloha.editables.length; i++) {
+					if (Aloha.editables[i].originalObj[0] === editable) {
+						return Aloha.editables[i];
+					}
+				}
+				return null;
+			};
+
+			return function ($element) {
+				if (!$element || 0 === $element.length) {
+					return null;
+				}
+				var editable = getEditableOf($element[0]);
+				if (!editable) {
+					$element.parents().each(function (__unused__, node) {
+						editable = getEditableOf(node);
+						if (editable) {
+							return false;
+						}
+					});
+				}
+				return editable;
+			};
+		}()),
+
+		/**
+		 * Logs a message to the console.
+		 *
+		 * @param {string} level Level of the log
+		 *                       ("error", "warn" or "info", "debug").
+		 * @param {object} component Component that calls the log.
+		 * @param {string} message Log message.
 		 * @hide
 		 */
-		log: function(level, component, message) {
-			if (typeof Aloha.Log !== "undefined")
+		log: function (level, component, message) {
+			if (typeof Aloha.Log !== 'undefined') {
 				Aloha.Log.log(level, component, message);
+			}
 		},
-		
+
 		/**
-		 * Register the given editable
-		 * @param editable editable to register
-		 * @return void
+		 * Register the given editable.
+		 *
+		 * @param {Editable} editable to register.
 		 * @hide
 		 */
 		registerEditable: function (editable) {
@@ -495,85 +524,99 @@ function ( jQuery, PluginManager ) {
 		},
 
 		/**
-		 * Unregister the given editable. It will be deactivated and removed from editables.
-		 * @param editable editable to unregister
-		 * @return void
+		 * Unregister the given editable. It will be deactivated and removed
+		 * from editables.
+		 *
+		 * @param {Editable} editable The editable to unregister.
 		 * @hide
 		 */
 		unregisterEditable: function (editable) {
-
-			// Find the index
-			var id = Aloha.editables.indexOf( editable );
-			// Remove it if really found!
-			if (id != -1) {
-				Aloha.editables.splice(id, 1);
+			var index = $.inArray(editable, Aloha.editables);
+			if (index !== -1) {
+				Aloha.editables.splice(index, 1);
 			}
 		},
 
 		/**
-		 * String representation
-		 * @hide
-		 */
-		toString: function () {
-			return 'Aloha';
-		},
-
-		/**
-		 * Check whether at least one editable was modified
-		 * @method
-		 * @return {boolean} true when at least one editable was modified, false if not
+		 * Check whether at least one editable was modified.
+		 *
+		 * @return {boolean} True when at least one editable was modified,
+		 *                   false otherwise.
 		 */
 		isModified: function () {
-			// check if something needs top be saved
-			for (var i = 0; i < Aloha.editables.length; i++) {
-				if (Aloha.editables[i].isModified && Aloha.editables[i].isModified()) {
+			var i;
+			for (i = 0; i < Aloha.editables.length; i++) {
+				if (Aloha.editables[i].isModified
+						&& Aloha.editables[i].isModified()) {
 					return true;
 				}
 			}
-
 			return false;
 		},
 
 		/**
-		 * Determines the Aloha Url
-		 * Uses Aloha.settings.baseUrl if set.
-		 * @method
-		 * @return {String} alohaUrl
+		 * Determines the Aloha Url.
+		 *
+		 * @return {String} Aloha's baseUrl setting or "" if not set.
 		 */
-		getAlohaUrl: function( suffix ) {
-			// aloha base path is defined by a script tag with 2 data attributes
-			var requireJs = jQuery('[data-aloha-plugins]'),
-				baseUrl = ( requireJs.length ) ? requireJs[0].src.replace( /\/?aloha.js$/ , '' ) : '';
-			
-			if ( typeof Aloha.settings.baseUrl === "string" ) {
-				baseUrl = Aloha.settings.baseUrl;
-			}
-			
-			return baseUrl;
+		getAlohaUrl: function (suffix) {
+			return Aloha.settings.baseUrl || '';
 		},
 
 		/**
-		 * Gets the Plugin Url
-		 * @method
-		 * @param {String} name
-		 * @return {String} url
+		 * Gets the plugin's url.
+		 *
+		 * @param {string} name The name with which the plugin was registered
+		 *                      with.
+		 * @return {string} The fully qualified url of this plugin.
 		 */
 		getPluginUrl: function (name) {
-			var url;
-
-			if (name) {
-				url = pluginPaths[name];
-				if(url) {
-					//Check if url is absolute and attach base url if it is not
-					if(!url.match("^(\/|http[s]?:).*")) {
-						url = Aloha.getAlohaUrl() + '/' + url;
-					}
+			if (!name) {
+				return null;
+			}
+			var url = Aloha.settings._pluginBaseUrlByName[name];
+			if (url) {
+				// Check if url is absolute and attach base url if it is not.
+				if (!url.match("^(\/|http[s]?:).*")) {
+					url = Aloha.getAlohaUrl() + '/' + url;
 				}
 			}
-
 			return url;
-		}
+		},
 
+		/**
+		 * Disable object resizing by executing command 'enableObjectResizing',
+		 * if the browser supports this.
+		 */
+		disableObjectResizing: function () {
+			try {
+				// This will disable browsers image resizing facilities in
+				// order disable resize handles.
+				var supported;
+				try {
+					supported = document.queryCommandSupported('enableObjectResizing');
+				} catch (e) {
+					supported = false;
+					Aloha.Log.log('enableObjectResizing is not supported.');
+				}
+				if (supported) {
+					document.execCommand('enableObjectResizing', false, false);
+					Aloha.Log.log('enableObjectResizing disabled.');
+				}
+			} catch (e2) {
+				Aloha.Log.error(e2, 'Could not disable enableObjectResizing');
+				// this is just for others, who will not support disabling enableObjectResizing
+			}
+		},
+
+		/**
+		 * Human-readable string representation of this.
+		 *
+		 * @hide
+		 */
+		toString: function () {
+			return 'Aloha';
+		}
 	});
 
 	return Aloha;

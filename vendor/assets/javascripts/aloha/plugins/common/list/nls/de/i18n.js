@@ -1,5 +1,7 @@
-define({"button.createulist.tooltip":"Unsortierte Liste einf\u00fcgen",
-"button.createolist.tooltip":"Sortierte Liste einf\u00fcgen",
-"button.indentlist.tooltip":"Liste niedriger schieben",
-"button.outdentlist.tooltip":"Liste h\u00F6her schieben",
-"floatingmenu.tab.list":"Liste"});
+define({
+	"button.createulist.tooltip": "Unsortierte Liste einfÃ¼gen",
+	"button.createolist.tooltip": "Sortierte Liste einfÃ¼gen",
+	"button.indentlist.tooltip": "Liste einrÃ¼cken",
+	"button.outdentlist.tooltip": "Liste ausrÃ¼cken",
+	"floatingmenu.tab.list": "Listen"
+});

@@ -1,67 +1,185 @@
-/*!
-* Aloha Editor
-* Author & Copyright (c) 2010 Gentics Software GmbH
-* aloha-sales@gentics.com
-* Licensed unter the terms of http://www.aloha-editor.com/license.html
-*/
-define(
-['aloha', 'aloha/jquery', 'aloha/contenthandlermanager'],
-function( Aloha, jQuery, ContentHandlerManager ) {
-	
+/* wordcontenthandler.js is part of Aloha Editor project http://aloha-editor.org
+ *
+ * Aloha Editor is a WYSIWYG HTML5 inline editing library and editor.
+ * Copyright (c) 2010-2012 Gentics Software GmbH, Vienna, Austria.
+ * Contributors http://aloha-editor.org/contribution.php
+ *
+ * Aloha Editor is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or any later version.
+ *
+ * Aloha Editor is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * As an additional permission to the GNU GPL version 2, you may distribute
+ * non-source (e.g., minimized or compacted) forms of the Aloha-Editor
+ * source code without the copy of the GNU GPL normally required,
+ * provided you include this license notice and a URL through which
+ * recipients can access the Corresponding Source.
+ */
+define([
+	'jquery',
+	'aloha',
+	'aloha/contenthandlermanager',
+	'contenthandler/contenthandler-utils',
+	'util/dom'
+], function (
+	$,
+	Aloha,
+	Manager,
+	Utils,
+	Dom
+) {
+	'use strict';
 
-	var WordContentHandler = ContentHandlerManager.createHandler({
-		/**
-		 * Handle the pasting. Try to detect content pasted from word and transform to clean html
-		 * @param content
-		 */
-		handleContent: function( content ) {
+	var jQuery = $;
 
-			if ( typeof content === 'string' ){
-				content = jQuery( '<div>' + content + '</div>' );
-			} else if ( content instanceof jQuery ) {
-				content = jQuery( '<div>' ).append(content);
+	/**
+	 * Matches the string "mso".
+	 *
+	 * @type {RexExp}
+	 * @const
+	 */
+	var MSO = /mso/;
+
+	/**
+	 * Matches string starting with "#".
+	 *
+	 * @type {RexExp}
+	 * @const
+	 */
+	var HASH_HREF = /^#(.*)/;
+
+	/**
+	 * Checks whether the given node is empty, ignoring white spaces.
+	 *
+	 * @param {jQuery.<HTMLElement>} $node
+	 * @return {boolean} True if $node is empty.
+	 */
+	function isEmpty($node) {
+		switch ($node[0].nodeName.toLowerCase()) {
+		case 'table':
+			return 0 === $node.find('tbody,tr').length;
+		case 'tbody':
+			return 0 === $node.find('tr').length;
+		case 'tr':
+			return 0 === $node.find('td,th').length;
+		default:
+			return '' === $.trim($node.text());
+		}
+	}
+
+	/**
+	 * Checks whether the given content element can be assumed to originate
+	 * from Microsoft Word.
+	 *
+	 * @param {jQuery.<HTMLElement>} $content
+	 * @return True if the content is determined to originate from an
+	 *         office document.
+	 */
+	function isWordContent($content) {
+		// Because reading the html of the content is way faster than iterating
+		// its entire node tree, therefore we attempt this first.
+		if (0 === $content.length || !MSO.test($content[0].outerHTML)) {
+			return false;
+		}
+		var $nodes = $content.find('*');
+		var i;
+		var style;
+		var classNames;
+		// Because if "mso" is found somewhere in the style or class names then
+		// the content originated form MS Word.
+		for (i = 0; i < $nodes.length; i++) {
+			style = $nodes.eq(i).attr('style');
+			if (style && style.toLowerCase().indexOf('mso') >= 0) {
+				return true;
 			}
-
-			if (this.detectWordContent(content)) {
-				this.transformWordContent(content);
+			classNames = $nodes.eq(i).attr('class');
+			if (classNames && classNames.toLowerCase().indexOf('mso') >= 0) {
+				return true;
 			}
+		}
+		return false;
+	}
 
-			return content.html();
-		},
+	/**
+	 * Cleanup MS Word HTML.
+	 *
+	 * @param {jQuery.<HTMLElement>} $content
+	 */
+	function clean($content) {
+		var $nodes = $content.find('*');
+		var nodeName;
+		var $node;
+		var href;
+		var i;
+		for (i = 0; i < $nodes.length; i++) {
+			$node = $nodes.eq(i);
+			nodeName = $node[0].nodeName.toLowerCase();
+
+			if ('a' === nodeName) {
+
+				// Because when a href starts with #, it's the link to an
+				// anchor and should be removed.
+				href = $node.attr('href');
+				if (href && HASH_HREF.test($.trim(href))) {
+					$node.contents().unwrap();
+				}
+			} else if ('div' === nodeName || 'span' === nodeName) {
+
+				// Because footnotes for example are wrapped in divs and should
+				// be unwrap.
+				$node.contents().unwrap();
+			} else if ('td' !== nodeName && isEmpty($node)) {
+
+				// Because any empty element (like spaces wrapped in spans) are
+				// not needed, except table cells.
+				$node.contents().unwrap();
+			}
+		}
+	}
+
+	/**
+	 * Transform Title and Subtitle from MS Word.
+	 *
+	 * @param {jQuery.<HTMLElement>} $content
+	 */
+	function transformTitles($content) {
+		$content.find('p.MsoTitle').each(function () {
+			Aloha.Markup.transformDomObject($(this), 'h1');
+		});
+		$content.find('p.MsoSubtitle').each(function () {
+			Aloha.Markup.transformDomObject($(this), 'h2');
+		});
+	}
+
+	var WordContentHandler = Manager.createHandler({
 
 		/**
-		 * Check whether the content of the given jQuery object is assumed to be pasted from word.
-		 * @param content
-		 * @return true for content pasted from word, false for other content
+		 * Handle content pasted from Word or Open/Libre Office.
+		 *
+		 * Tries to detect content pasted from office document and transforms
+		 * into clean HTML.
+		 *
+		 * @param {jQuery.<HTMLElement>|string} content
+		 * @return {string} Clean HTML
 		 */
-		detectWordContent: function (content) {
-			var wordDetected = false;
-			// check every element which was pasted.
-
-			content.find('*').each(function() {
-				// get the element style
-				var style = jQuery(this).attr('style'),
-					clazz;
-
-				if (style) {
-					// if 'mso' is found somewhere in the style, we found word content
-					if (style.toLowerCase().indexOf('mso') >= 0) {
-						wordDetected = true;
-						return false;
-					}
-				}
-				// get the element class
-				clazz = jQuery(this).attr('class');
-				if (clazz) {
-					// if 'mso' is found somewhere in the class, we found word content
-					if (clazz.toLowerCase().indexOf('mso') >= 0) {
-						wordDetected = true;
-						return false;
-					}
-				}
-			});
-			// return the result
-			return wordDetected;
+		handleContent: function (content) {
+			var $content = Utils.wrapContent(content);
+			if (!$content) {
+				return content;
+			}
+			if (isWordContent($content)) {
+				this.transformWordContent($content);
+			}
+			return $content.html();
 		},
 
 		/**
@@ -92,7 +210,7 @@ function( Aloha, jQuery, ContentHandlerManager ) {
 			bulletClass = 'aloha-list-bullet';
 
 			// first step is to find all paragraphs which will be converted into list elements and mark them by adding the class 'aloha-list-element'
-			detectionFilter = 'p.MsoListParagraphCxSpFirst,p.MsoListParagraph,p span';
+			detectionFilter = 'p.MsoListParagraphCxSpFirst,p.MsoListParagraphCxSpMiddle,p.MsoListParagraphCxSpLast,p.MsoListParagraph,p span';
 			paragraphs = content.find(detectionFilter);
 			paragraphs.each(function() {
 				var jqElem = jQuery(this),
@@ -119,12 +237,12 @@ function( Aloha, jQuery, ContentHandlerManager ) {
 			spans = content.find(detectionFilter);
 			spans.each(function() {
 				var jqElem = jQuery(this),
-					innerText = jqElem.text().trim().replace(/&nbsp;/g, ''),
+				    innerText = jQuery.trim(jqElem.text()).replace(/&nbsp;/g, ''),
 					outerText;
 				
 				if (innerText.length === 0) {
 					// check whether the outermost of the three spans contains nothing more than numbering
-					outerText = jqElem.parent().parent().text().trim().replace(/&nbsp;/g, '');
+					outerText = jQuery.trim(jqElem.parent().parent().text()).replace(/&nbsp;/g, '');
 
 					// patterns for list numbering
 					// 1.
@@ -144,7 +262,8 @@ function( Aloha, jQuery, ContentHandlerManager ) {
 
 			// no detect all marked paragraphs and transform into lists
 			detectionFilter = 'p.' + listElementClass;
-			negateDetectionFilter = ':not('+detectionFilter+')';
+			// We also have to include font because if IE9
+			negateDetectionFilter = ':not(' + detectionFilter + ', font)';
 			paragraphs = content.find(detectionFilter);
 
 			if (paragraphs.length > 0) {
@@ -162,6 +281,10 @@ function( Aloha, jQuery, ContentHandlerManager ) {
 					// lists by comparing the left margin)
 					nestLevel = [];
 					margin = parseFloat(jqElem.css('marginLeft'));
+					// Fix for not found margin on level 0
+					if (isNaN(margin)) {
+						margin = 0;
+					}
 					// this array will hold all ul/ol elements
 					lists = [];
 					// get all following list elements
@@ -194,6 +317,11 @@ function( Aloha, jQuery, ContentHandlerManager ) {
 					following.each(function() {
 						var jqElem = jQuery(this),
 							newMargin, jqNewList;
+						
+						if (jqElem.is('font')) {
+							//Fix for IE9
+							return;
+						}
 
 						// remove all font tags
 						jqElem.find('font').each(function() {
@@ -201,7 +329,11 @@ function( Aloha, jQuery, ContentHandlerManager ) {
 						});
 						// check the new margin
 						newMargin = parseFloat(jqElem.css('marginLeft'));
-
+						// Fix for not found margin on level 0
+						if (isNaN(newMargin)) {
+							newMargin = 0;
+						}
+						
 						// get the first span
 						firstSpan = jQuery(jqElem.find('span.' + bulletClass));
 						if (firstSpan.length === 0) {
@@ -247,53 +379,6 @@ function( Aloha, jQuery, ContentHandlerManager ) {
 				});
 			}
 		},
-
-		/**
-		 * Transform Title and Subtitle pasted from word
-		 * @param content
-		 */
-		transformTitles: function(content) {
-			content.find('p.MsoTitle').each(function() {
-				// titles will be transformed to h1
-				Aloha.Markup.transformDomObject(jQuery(this), 'h1');
-			});
-			content.find('p.MsoSubtitle').each(function() {
-				// sub titles will be transformed to h2
-				Aloha.Markup.transformDomObject(jQuery(this), 'h2');
-			});
-		},
-		
-		/**
-		 * Cleanup MS Word HTML
-		 * @param content
-		 */
-		cleanHtml: function ( content ) {
-			
-			// unwrap empty tags
-			// do not remove them here because of eg. spaces wrapped in spans which are needed
-			content.find('*').filter( function() {
-				return jQuery.trim(jQuery(this).text()) == '';
-			}).contents().unwrap();
-			
-			// unwrap all spans
-			content.find('span').contents().unwrap();
-			
-			// when href starts with #, it's the link to an anchor. remove it.
-			content.find('a').each(function() {
-				if ( jQuery(this).attr('href') && jQuery(this).attr('href').trim().match(/^#(.*)$/) ) {
-					jQuery(this).contents().unwrap();
-				}
-			});
-			
-			// eg. footnotes are wrapped in divs. unwrap them.
-			content.find('div').contents().unwrap();
-			
-			// remove empty tags
-			content.find('*').filter( function() {
-			    return jQuery.trim(jQuery(this).text()) == '';
-			}).remove();
-			
-		},
 		
 		/**
 		 * Remove paragraph numbering from TOC feature
@@ -311,7 +396,7 @@ function( Aloha, jQuery, ContentHandlerManager ) {
 				
 					// remove TOC numbering
 					spans.each(function() {
-						if ( jQuery(this).text().trim().match(/^([\.\(]?[\d\D][\.\(]?){1,4}$/) ) {
+						if ( jQuery.trim(jQuery(this).text()).match(/^([\.\(]?[\d\D][\.\(]?){1,4}$/) ) {
 							jQuery(this).remove();
 						}
 					})
@@ -361,23 +446,14 @@ function( Aloha, jQuery, ContentHandlerManager ) {
 
 		/**
 		 * This is the main transformation method
-		 * @param content
+		 * @param {jQuery.<HTMLElement>} $content
 		 */
-		transformWordContent: function( content ) {
-			// transform table of contents
-			this.transformToc( content );
-
-			// remove paragraph numbering
-			this.removeParagraphNumbering( content );
-
-			// transform lists
-			this.transformListsFromWord( content );
-
-			// transform titles
-			this.transformTitles( content );
-
-			// clean html
-			this.cleanHtml( content );
+		transformWordContent: function ($content) {
+			this.transformToc($content);
+			this.removeParagraphNumbering($content);
+			this.transformListsFromWord($content);
+			transformTitles($content);
+			clean($content);
 		}
 	});
 	

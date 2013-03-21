@@ -1,7 +1,7 @@
 module Aloha
-  VERSION   = '0.20.10'
+  VERSION   = '0.23.2'
 
   module Rails
-    VERSION = '0.20.1.5'
+    VERSION = '0.23.2.1'
   end
 end

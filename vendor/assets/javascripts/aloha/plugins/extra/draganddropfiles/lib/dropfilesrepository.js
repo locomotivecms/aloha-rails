@@ -3,12 +3,12 @@
  * Copyright (c) 2010 Nicolas Karageuzian - http://nka.me
  */
 define([	
-	'aloha/jquery',
+	'jquery',
 	'aloha/repository',
 	'aloha/repository',
 	'i18n!aloha/nls/i18n'],
 function($, repository, i18nCore){
-	
+	"use strict";
 	var jQuery = $,
 	    GENTICS = window.GENTICS,
 	    Aloha = window.Aloha,

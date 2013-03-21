@@ -31,16 +31,21 @@ desc "Update Aloha Editor to version specified in lib/aloha/rails/version.rb"
 task :update => [ :fetch, :extract, :process ]
 
 task :fetch do
-  download("https://github.com/downloads/alohaeditor/Aloha-Editor/alohaeditor-#{Aloha::VERSION}.zip", "alohaeditor.zip")
+  download("https://github.com/alohaeditor/Aloha-Editor/archive/alohaeditor-#{Aloha::VERSION}.zip", "alohaeditor.zip")
 end
 
 task :extract do
   step "Extracting core files" do
     `rm -rf tmp/aloha`
     `unzip -u tmp/alohaeditor.zip -d tmp`
+    `mv tmp/Aloha-Editor-alohaeditor-#{Aloha::VERSION}/src tmp/aloha`
+    `rm -rf tmp/Aloha-Editor-alohaeditor-#{Aloha::VERSION}`
 
-    %w(build.txt package.json plugins/extra/browser/css/browsercombined.css.backup).each { |file| `rm tmp/aloha/#{file}` }
-    %w(demo test plugins/extra/speak plugins/extra/flag-icons plugins/extra/googletranslate plugins/extra/wai-lang plugins/extra/zemanta).each { |folder| `rm -rf tmp/aloha/#{folder}` }
+    %w(package.json).each { |file| `rm tmp/aloha/#{file}` }
+    %w(demo test plugins/extra/speak plugins/extra/flag-icons plugins/extra/googletranslate plugins/extra/wai-lang plugins/extra/zemanta plugins/extra/proxy).each { |folder| `rm -rf tmp/aloha/#{folder}` }
+    %w(1.5.1 1.6.1 1.6 1.7.1).each { |version| `rm tmp/aloha/lib/vendor/jquery-#{version}.js` }
+    Dir['tmp/aloha/**/demo'].each { |file| `rm -rf #{file}` if File.directory?(file) }
+    Dir['tmp/aloha/**/test'].each { |file| `rm -rf #{file}` if File.directory?(file) }
 
     `rm -rf vendor/assets/javascripts/aloha`
     `mkdir -p vendor/assets/javascripts/aloha`
@@ -50,11 +55,15 @@ end
 
 task :process do
   step "Fixing file encoding" do
-    require 'iconv'
-    converter = Iconv.new('UTF-8', 'ISO-8859-1')
     Dir["vendor/assets/javascripts/aloha/**/*.js"].each do |file|
-      contents = converter.iconv(File.read(file)).force_encoding('UTF-8')
+      contents = File.read(file).encode('UTF-8', 'ISO-8859-1')
       File.open(file, 'w') { |f| f.write(contents) }
     end
+  end
+  step "Wrong color in the aloha.css file" do
+    file = 'vendor/assets/javascripts/aloha/css/aloha.css'
+    content = File.read(file)
+    content.gsub!('#NaNbbaaNaN00NaN00NaN00NaN00NaN', '#000')
+    File.open(file, 'w') { |f| f.write(content) }
   end
 end
