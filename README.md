@@ -33,7 +33,7 @@ and use AlohaEditor in your view:
             Aloha.jQuery('#content').aloha();
 
         });
-    </script
+    </script>
 
 Credits
 -------
