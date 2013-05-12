@@ -50,12 +50,37 @@ define([
 		'U': true
 	};
 
-	// Is this list complete? What about HTML5 semantic tags?
-	var BLOCK_TAGNAMES = [
+	// NB: "block-level" is not technically defined for elements that are new in
+	// HTML5.
+	var BLOCKLEVEL_ELEMENTS = [
+		'address',
+		'article',    // HTML5
+		'aside',      // HTML5
+		'audio',      // HTML5
 		'blockquote',
+		'canvas',     // HTML5
+		'dd',
+		'div',
+		'dl',
+		'fieldset',
+		'figcaption',
+		'figure',
+		'footer',
+		'form',
 		'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+		'header',
+		'hgroup',
+		'hr',
+		'noscript',
+		'ol',
+		'output',
 		'p',
-		'pre'
+		'pre',
+		'section',   // HTML5
+		'table',
+		'tfoot',
+		'ul',
+		'video'      // HTML5
 	];
 
 	/**
@@ -65,17 +90,20 @@ define([
 	 * @type {object<string, boolean>}
 	 */
 	var blocksTagnameMap = {};
-	Maps.fillKeys(blocksTagnameMap, BLOCK_TAGNAMES, true);
-	Maps.fillKeys(blocksTagnameMap, Arrays.map(BLOCK_TAGNAMES, function (str) {
-		return str.toUpperCase();
-	}), true);
+	Maps.fillKeys(blocksTagnameMap, BLOCKLEVEL_ELEMENTS, true);
+	Maps.fillKeys(
+		blocksTagnameMap,
+		Arrays.map(BLOCKLEVEL_ELEMENTS, function (str) {
+			return str.toUpperCase();
+		}),
+		true
+	);
 
 	function isBlock(node) {
 		return blocksTagnameMap[node.nodeName];
 	}
 
 	function isIgnorableWhitespace(node) {
-		// TODO
 		return 3 === node.nodeType && !node.length;
 	}
 
@@ -111,11 +139,50 @@ define([
 		return found;
 	}
 
+	function isEditingHost(node) {
+		return 1 === node.nodeType && "true" === node.contentEditable;
+	}
+
+	/**
+	 * Starting from the given node, and working backwards through the siblings,
+	 * find the node that satisfies the given condition.
+	 *
+	 * @param {HTMLElement} node The node at which to start the search.
+	 * @param {function(HTMLElement):boolean} condition A predicate the receives
+	 *                                        one of children of `node`.
+	 *
+	 * @return {HTMLElement} The first node that meets the given condition.
+	 */
+	function findNodeRight(node, condition) {
+		while (node && !condition(node)) {
+			node = node.previousSibling;
+		}
+		return node;
+	}
+
+	/**
+	 * Checks if the given editable is a valid container for paragraphs.
+	 *
+	 * @param {Aloha.Editable} editable The editable to be checked
+	 *
+	 * @return {boolean} False if the editable may not contain paragraphs
+	 */
+	function allowNestedParagraph(editable) {
+		if (editable.obj.prop("tagName") === "SPAN" ||
+				editable.obj.prop("tagName") === "P") {
+			return false;
+		}
+		return true;
+	}
+
 	return {
-		BLOCK_TAGNAMES: BLOCK_TAGNAMES,
+		BLOCKLEVEL_ELEMENTS: BLOCKLEVEL_ELEMENTS,
 		isBlock: isBlock,
 		isIgnorableWhitespace: isIgnorableWhitespace,
 		isInlineFormattable: isInlineFormattable,
-		isProppedBlock: isProppedBlock
+		isProppedBlock: isProppedBlock,
+		isEditingHost: isEditingHost,
+		findNodeRight: findNodeRight,
+		allowNestedParagraph: allowNestedParagraph
 	};
 });

@@ -5,5 +5,5 @@ Rake::Task[assets_task].enhance do
   target = File.join(Rails.public_path, Rails.application.config.assets.prefix)
 
   mkdir_p target
-  cp_r assets, target, :preserve => true
+  cp_r assets, target, preserve: true
 end
