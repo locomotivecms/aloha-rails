@@ -9,7 +9,7 @@ Instructions
 
 **1. Add `aloha-rails` to your Gemfile**
 
-    gem 'locomotive-aloha-rails'
+    gem 'locomotive-aloha-rails', require: 'aloha-rails'
 
 Then run `bundle install`.
 
